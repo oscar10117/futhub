@@ -1,0 +1,88 @@
+CANCHA BOLIVIA — PROTOTIPO ANDROID
+
+ENTREGA
+Interfaz en Kotlin y Jetpack Compose, modelo de clases implementado y simulación
+local de los flujos principales. Nombre provisional, se puede cambiar.
+No es una aplicación de producción. No contiene backend, inicio de sesión real,
+base de datos, pagos, notificaciones ni validaciones médicas reales.
+Los cambios sobreviven a una rotación de pantalla mediante ViewModel, pero se
+pierden al cerrar el proceso. Todos los jugadores y resultados son ficticios.
+
+ABRIR EN ANDROID STUDIO
+1. Descomprime TODO el ZIP.
+2. En Android Studio: Open. Selecciona la carpeta CanchaBolivia que contiene
+   settings.gradle.kts. No abras únicamente MainActivity.kt ni la carpeta app.
+3. Espera a que Gradle termine de sincronizar. Necesitas Internet la primera vez.
+4. Si solicita instalar Android SDK 35 o Build Tools 35, acepta la instalación.
+5. Usa JDK 17 o el JDK compatible incluido en Android Studio en Gradle JDK.
+   La configuración usa AGP 8.9.2, Gradle 8.11.1, Kotlin 2.1.20 y SDK 35.
+   Se requiere una versión de Android Studio compatible con AGP 8.9.
+6. Selecciona un emulador o celular con Android 8.0/API 26 o superior.
+7. Pulsa Run (triángulo verde), con la configuración app.
+Si Android Studio ofrece actualizar dependencias, puedes conservar las versiones
+incluidas para la primera prueba. No copies local.properties de otra computadora.
+
+RECORRIDO PARA LA EXPOSICIÓN
+1. Inicio: explicar el problema de las filas y la verificación de jugadores.
+2. Jugador > Fichas: escoger fecha/hora y solicitar ficha para Juan Pérez.
+3. Médico > Fichas: aceptar la solicitud. Después simular la revisión con Apto.
+4. Árbitro > Equipos > BOL: verificar que Juan ahora figura habilitado.
+5. Organizador > Torneo > Configurar: nombre, formato, equipos y orden manual.
+6. Guardar y sortear o generar con el orden elegido.
+7. Árbitro > Torneo: registrar y confirmar marcadores.
+8. Liga: se actualiza la tabla. Eliminatorias: el organizador crea la siguiente
+   ronda cuando todos los resultados de la ronda anterior están confirmados.
+Para probar otro formato después de generar el fixture, cierra completamente
+el proceso de la aplicación y vuelve a abrir. El prototipo administra un torneo
+por sesión y bloquea su configuración después de generar partidos.
+
+REGLAS ADOPTADAS
+- Un turno médico tiene un único cupo. Un rechazo vuelve a liberar el horario.
+- Una solicitud activa por jugador y torneo. Aceptación no equivale a aptitud.
+- El médico registra apto/no apto después de la revisión presencial.
+- La habilitación se asocia al jugador y al torneo; no se guardan diagnósticos.
+- Los equipos se inscriben por decisión del organizador. Sus jugadores pueden
+  tener estados distintos. Este prototipo no exige un plantel mínimo habilitado.
+- Liga a una sola vuelta: todos juegan contra todos una vez; victoria 3 puntos,
+  empate 1, derrota 0. Desempates: diferencia de goles, después goles a favor.
+  Si el empate persiste, se indica que hace falta una definición adicional.
+- En liga no se eliminan equipos por perder y no hay una final automática.
+- Eliminación a partido único: un empate requiere seleccionar ganador por penales.
+- Si hay 10 equipos, la llave se completa a 16 plazas y existen 6 pases libres.
+  El sorteo reparte al azar estos lugares. En orden manual, los primeros reciben
+  los pases libres. No hay partidos contra equipos ficticios.
+- El orden manual se ajusta ANTES de generar. El fixture no se modifica después;
+  es una simplificación explícita de esta primera versión.
+- Cada resultado confirmado queda bloqueado, para no invalidar rondas posteriores.
+- El selector de roles es una herramienta de demostración, NO autenticación.
+- Convocatorias del entrenador, edición posterior del fixture, varios torneos,
+  asignación variable de árbitros y registro de nuevas personas: futuras mejoras.
+
+ARCHIVOS IMPORTANTES
+app/src/main/java/com/example/canchabolivia/Modelo.kt
+  Entidades, enumeraciones y MotorTorneo. Relacionadas mediante identificadores.
+app/src/main/java/com/example/canchabolivia/CanchaViewModel.kt
+  Estado de la sesión, datos de ejemplo y acciones de las pantallas.
+app/src/main/java/com/example/canchabolivia/MainActivity.kt
+  Interfaz: Inicio, Fichas, Equipos y Torneo, formulario y diálogo de resultados.
+documentacion/Diagrama_Clases.png
+  Diagrama UML de entidades, enumeraciones y clases de soporte.
+documentacion/Diagrama_Clases.puml
+  Fuente UML editable, incluye también enumeraciones y clases de soporte.
+documentacion/PROMPT.txt
+  Consigna organizada a partir de la explicación de la aplicación.
+
+VERIFICACIÓN
+Se compiló Modelo.kt con Kotlin 2.1.20 y se ejecutaron pruebas automáticas
+para ligas y eliminatorias de 2 a 10 equipos: parejas únicas, ausencia de
+doble participación por fecha, pases libres, n-1 partidos de eliminación,
+tabla de puntos y ganador por penales. Todas pasaron.
+La prueba reproducible está en documentacion/VerificarModelo.kt.
+La compilación completa del APK no pudo verificarse en el entorno de entrega:
+no dispone de Android SDK y Gradle no pudo resolver services.gradle.org.
+No se afirma que el proyecto haya sido ejecutado en un emulador. La sincronización
+y ejecución final deben comprobarse en Android Studio.
+
+REFERENCIAS TÉCNICAS
+https://developer.android.com/build/releases/agp-8-9-0-release-notes
+https://developer.android.com/develop/ui/compose/setup-compose-dependencies-and-compiler

@@ -21,25 +21,6 @@
                     }
                 },
                 {
-                    "source": "D:\\CanchaBolivia_AndroidStudio\\CanchaBolivia\\app\\src\\main\\res\\values\\themes.xml",
-                    "from": {
-                        "startLines": "1",
-                        "startColumns": "4",
-                        "startOffsets": "16",
-                        "endLines": "6",
-                        "endColumns": "12",
-                        "endOffsets": "349"
-                    },
-                    "to": {
-                        "startLines": "229",
-                        "startColumns": "4",
-                        "startOffsets": "14623",
-                        "endLines": "234",
-                        "endColumns": "12",
-                        "endOffsets": "14956"
-                    }
-                },
-                {
                     "source": "C:\\Users\\Carlo\\.gradle\\caches\\8.11.1\\transforms\\e0dc0c2abe2a3c6fda8a5ca2a91353ab\\transformed\\customview-poolingcontainer-1.0.0\\res\\values\\values.xml",
                     "from": {
                         "startLines": "2,3",
@@ -213,6 +194,25 @@
                         "startOffsets": "5873",
                         "endColumns": "49",
                         "endOffsets": "5918"
+                    }
+                },
+                {
+                    "source": "D:\\CanchaBolivia\\app\\src\\main\\res\\values\\themes.xml",
+                    "from": {
+                        "startLines": "1",
+                        "startColumns": "4",
+                        "startOffsets": "16",
+                        "endLines": "6",
+                        "endColumns": "12",
+                        "endOffsets": "349"
+                    },
+                    "to": {
+                        "startLines": "229",
+                        "startColumns": "4",
+                        "startOffsets": "14623",
+                        "endLines": "234",
+                        "endColumns": "12",
+                        "endOffsets": "14956"
                     }
                 },
                 {

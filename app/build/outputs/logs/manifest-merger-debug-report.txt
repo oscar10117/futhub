@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:1:1-10:12
-INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:1:1-10:12
-INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:1:1-10:12
-INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:1:1-10:12
+ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:2:1-27:12
+INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:2:1-27:12
+INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:2:1-27:12
+INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:2:1-27:12
 MERGED from [androidx.activity:activity:1.10.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\0b445dfc91ed65c3dd83dd5991441b49\transformed\activity-1.10.1\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.compose.material3:material3-android:1.3.2] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\5d8696c473a31245dea7fab319648cb3\transformed\material3-release\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.compose.material:material-android:1.8.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\1003598b8589924b0e24ef3b567ff318\transformed\material-release\AndroidManifest.xml:2:1-7:12
@@ -51,17 +51,22 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Carlo\.gradle\cach
 MERGED from [androidx.tracing:tracing:1.0.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\34ce4f68933924b42bd7a411d429d51e\transformed\tracing-1.0.0\AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\af9a47f0240069f6c2b7da7e19a04a39\transformed\core-runtime-2.2.0\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6548fe1ad7a7bf962d1da6f7ad6a5413\transformed\interpolator-1.0.0\AndroidManifest.xml:17:1-22:12
+MERGED from [com.android.volley:volley:1.2.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\0d88074b7e6cb4d210584021ff5fffb8\transformed\volley-1.2.1\AndroidManifest.xml:2:1-7:12
 	package
-		INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml
+		INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml
 	android:versionName
-		INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml
+		INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml
 	android:versionCode
-		INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml
+		INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml
 	xmlns:android
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:1:11-69
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:2:11-69
+uses-permission#android.permission.INTERNET
+ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:5:5-67
+	android:name
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:5:22-64
 application
-ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:5-9:19
-INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:5-9:19
+ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:7:5-25:19
+INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:7:5-25:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.8.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6e2ef75644e150c0bdb68050f1f923cf\transformed\ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.compose.ui:ui-tooling-android:1.8.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6e2ef75644e150c0bdb68050f1f923cf\transformed\ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.emoji2:emoji2:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\9ae89abd18087f1f977c949cf342b19d\transformed\emoji2-1.4.0\AndroidManifest.xml:23:5-33:19
@@ -77,37 +82,43 @@ MERGED from [androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.g
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\4cce268ff8ed729d5be3c3ed8c842557\transformed\startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
 MERGED from [androidx.startup:startup-runtime:1.1.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\4cce268ff8ed729d5be3c3ed8c842557\transformed\startup-runtime-1.1.1\AndroidManifest.xml:25:5-31:19
 	android:extractNativeLibs
-		INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml
+		INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.13.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\293f2614e1ce5df95eb5ea6d56e369af\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
 	android:supportsRtl
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:113-139
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:13:9-35
 	android:label
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:18-48
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:12:9-31
+	android:roundIcon
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:11:9-54
+	android:icon
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:10:9-43
 	android:allowBackup
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:85-112
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:8:9-36
 	android:theme
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:49-84
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:14:9-44
+	android:usesCleartextTraffic
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:9:9-44
 activity#com.example.canchabolivia.MainActivity
-ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:3:9-8:20
+ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:16:9-23:20
 	android:exported
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:3:48-71
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:18:13-36
 	android:name
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:3:19-47
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:17:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:4:13-7:29
+ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:19:13-22:29
 action#android.intent.action.MAIN
-ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:5:17-69
+ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:20:17-69
 	android:name
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:5:25-66
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:20:25-66
 category#android.intent.category.LAUNCHER
-ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:6:17-77
+ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:21:17-77
 	android:name
-		ADDED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:6:27-74
+		ADDED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml:21:27-74
 uses-sdk
-INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
-INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml
-INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml
+INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml
+INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml
 MERGED from [androidx.activity:activity:1.10.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\0b445dfc91ed65c3dd83dd5991441b49\transformed\activity-1.10.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.activity:activity:1.10.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\0b445dfc91ed65c3dd83dd5991441b49\transformed\activity-1.10.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.compose.material3:material3-android:1.3.2] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\5d8696c473a31245dea7fab319648cb3\transformed\material3-release\AndroidManifest.xml:20:5-44
@@ -202,10 +213,12 @@ MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\Carlo\.gradle\cache
 MERGED from [androidx.arch.core:core-runtime:2.2.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\af9a47f0240069f6c2b7da7e19a04a39\transformed\core-runtime-2.2.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6548fe1ad7a7bf962d1da6f7ad6a5413\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
 MERGED from [androidx.interpolator:interpolator:1.0.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6548fe1ad7a7bf962d1da6f7ad6a5413\transformed\interpolator-1.0.0\AndroidManifest.xml:20:5-44
+MERGED from [com.android.volley:volley:1.2.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\0d88074b7e6cb4d210584021ff5fffb8\transformed\volley-1.2.1\AndroidManifest.xml:5:5-43
+MERGED from [com.android.volley:volley:1.2.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\0d88074b7e6cb4d210584021ff5fffb8\transformed\volley-1.2.1\AndroidManifest.xml:5:5-43
 	android:targetSdkVersion
-		INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml
+		INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml
 	android:minSdkVersion
-		INJECTED from D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml
+		INJECTED from D:\CanchaBolivia\app\src\main\AndroidManifest.xml
 activity#androidx.compose.ui.tooling.PreviewActivity
 ADDED from [androidx.compose.ui:ui-tooling-android:1.8.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6e2ef75644e150c0bdb68050f1f923cf\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
 	android:exported

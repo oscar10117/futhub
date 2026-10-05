@@ -1,0 +1,128 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.example.canchabolivia"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="35" />
+10
+11    <permission
+11-->[androidx.core:core:1.13.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\293f2614e1ce5df95eb5ea6d56e369af\transformed\core-1.13.1\AndroidManifest.xml:22:5-24:47
+12        android:name="com.example.canchabolivia.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+12-->[androidx.core:core:1.13.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\293f2614e1ce5df95eb5ea6d56e369af\transformed\core-1.13.1\AndroidManifest.xml:23:9-81
+13        android:protectionLevel="signature" />
+13-->[androidx.core:core:1.13.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\293f2614e1ce5df95eb5ea6d56e369af\transformed\core-1.13.1\AndroidManifest.xml:24:9-44
+14
+15    <uses-permission android:name="com.example.canchabolivia.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+15-->[androidx.core:core:1.13.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\293f2614e1ce5df95eb5ea6d56e369af\transformed\core-1.13.1\AndroidManifest.xml:26:5-97
+15-->[androidx.core:core:1.13.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\293f2614e1ce5df95eb5ea6d56e369af\transformed\core-1.13.1\AndroidManifest.xml:26:22-94
+16
+17    <application
+17-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:5-9:19
+18        android:allowBackup="false"
+18-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:85-112
+19        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+19-->[androidx.core:core:1.13.1] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\293f2614e1ce5df95eb5ea6d56e369af\transformed\core-1.13.1\AndroidManifest.xml:28:18-86
+20        android:debuggable="true"
+21        android:extractNativeLibs="false"
+22        android:label="Cancha Bolivia"
+22-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:18-48
+23        android:supportsRtl="true"
+23-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:113-139
+24        android:testOnly="true"
+25        android:theme="@style/Theme.Cancha" >
+25-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:2:49-84
+26        <activity
+26-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:3:9-8:20
+27            android:name="com.example.canchabolivia.MainActivity"
+27-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:3:19-47
+28            android:exported="true" >
+28-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:3:48-71
+29            <intent-filter>
+29-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:4:13-7:29
+30                <action android:name="android.intent.action.MAIN" />
+30-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:5:17-69
+30-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:5:25-66
+31
+32                <category android:name="android.intent.category.LAUNCHER" />
+32-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:6:17-77
+32-->D:\CanchaBolivia_AndroidStudio\CanchaBolivia\app\src\main\AndroidManifest.xml:6:27-74
+33            </intent-filter>
+34        </activity>
+35        <activity
+35-->[androidx.compose.ui:ui-tooling-android:1.8.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6e2ef75644e150c0bdb68050f1f923cf\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
+36            android:name="androidx.compose.ui.tooling.PreviewActivity"
+36-->[androidx.compose.ui:ui-tooling-android:1.8.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6e2ef75644e150c0bdb68050f1f923cf\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
+37            android:exported="true" />
+37-->[androidx.compose.ui:ui-tooling-android:1.8.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\6e2ef75644e150c0bdb68050f1f923cf\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
+38
+39        <provider
+39-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\9ae89abd18087f1f977c949cf342b19d\transformed\emoji2-1.4.0\AndroidManifest.xml:24:9-32:20
+40            android:name="androidx.startup.InitializationProvider"
+40-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\9ae89abd18087f1f977c949cf342b19d\transformed\emoji2-1.4.0\AndroidManifest.xml:25:13-67
+41            android:authorities="com.example.canchabolivia.androidx-startup"
+41-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\9ae89abd18087f1f977c949cf342b19d\transformed\emoji2-1.4.0\AndroidManifest.xml:26:13-68
+42            android:exported="false" >
+42-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\9ae89abd18087f1f977c949cf342b19d\transformed\emoji2-1.4.0\AndroidManifest.xml:27:13-37
+43            <meta-data
+43-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\9ae89abd18087f1f977c949cf342b19d\transformed\emoji2-1.4.0\AndroidManifest.xml:29:13-31:52
+44                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+44-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\9ae89abd18087f1f977c949cf342b19d\transformed\emoji2-1.4.0\AndroidManifest.xml:30:17-75
+45                android:value="androidx.startup" />
+45-->[androidx.emoji2:emoji2:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\9ae89abd18087f1f977c949cf342b19d\transformed\emoji2-1.4.0\AndroidManifest.xml:31:17-49
+46            <meta-data
+46-->[androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\e27ab4807eb2319af509e2a5005a7a0b\transformed\lifecycle-process-2.8.7\AndroidManifest.xml:29:13-31:52
+47                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+47-->[androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\e27ab4807eb2319af509e2a5005a7a0b\transformed\lifecycle-process-2.8.7\AndroidManifest.xml:30:17-78
+48                android:value="androidx.startup" />
+48-->[androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\e27ab4807eb2319af509e2a5005a7a0b\transformed\lifecycle-process-2.8.7\AndroidManifest.xml:31:17-49
+49            <meta-data
+49-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:29:13-31:52
+50                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+50-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:30:17-85
+51                android:value="androidx.startup" />
+51-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:31:17-49
+52        </provider>
+53
+54        <receiver
+54-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:34:9-52:20
+55            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+55-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:35:13-76
+56            android:directBootAware="false"
+56-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:36:13-44
+57            android:enabled="true"
+57-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:37:13-35
+58            android:exported="true"
+58-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:38:13-36
+59            android:permission="android.permission.DUMP" >
+59-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:39:13-57
+60            <intent-filter>
+60-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:40:13-42:29
+61                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+61-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:17-91
+61-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:25-88
+62            </intent-filter>
+63            <intent-filter>
+63-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:43:13-45:29
+64                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+64-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:17-85
+64-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:25-82
+65            </intent-filter>
+66            <intent-filter>
+66-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:46:13-48:29
+67                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+67-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:17-88
+67-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:25-85
+68            </intent-filter>
+69            <intent-filter>
+69-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:49:13-51:29
+70                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+70-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:17-95
+70-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\Carlo\.gradle\caches\8.11.1\transforms\568e59b55ce074c98577878a7b809412\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:25-92
+71            </intent-filter>
+72        </receiver>
+73    </application>
+74
+75</manifest>

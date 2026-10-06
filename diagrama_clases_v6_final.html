@@ -90,7 +90,7 @@ const { svg } = await mermaid.render('diagrama-svg', `classDiagram
     -String formato
     -Int cantidadGrupos
     -Int clasificadosPorGrupo
-    -String ciOrganizador
+    -String CI_Organizador
     +inscribirEquipo(equipo) InscripcionEquipo
     +cambiarEstado(estado) Unit
     +generarFixtureLiga() List~Partido~
@@ -141,7 +141,7 @@ const { svg } = await mermaid.render('diagrama-svg', `classDiagram
   }
 
   class InscripcionJugador {
-    -String ciJugador
+    -String CI_Jugador
     -Int idEquipo
     -Int idTorneo
     +estaVigente() Boolean
@@ -150,7 +150,7 @@ const { svg } = await mermaid.render('diagrama-svg', `classDiagram
   class Partido {
     -Int idPartido
     -Int idTorneo
-    -Int? idGrupo
+    -Int idGrupo
     -String fase
     -Int nroFecha
     -LocalDate fechaPartido
@@ -159,7 +159,7 @@ const { svg } = await mermaid.render('diagrama-svg', `classDiagram
     -Int penalesLocal
     -Int penalesVisitante
     -String estado
-    -String? motivoCancelacion
+    -String motivoCancelacion
     -Int idEquipoLocal
     -Int idEquipoVisitante
     +registrarResultado(golesLocal, golesVisitante) Unit
@@ -174,8 +174,8 @@ const { svg } = await mermaid.render('diagrama-svg', `classDiagram
   class Tarjeta {
     -Int idTarjeta
     -Int idPartido
-    -String ciJugador
-    -String ciArbitro
+    -String CI_Jugador
+    -String CI_Arbitro
     -String tipo
     -Int minuto
     +esRoja() Boolean
@@ -183,7 +183,7 @@ const { svg } = await mermaid.render('diagrama-svg', `classDiagram
 
   class ArbitroPartido {
     -Int idPartido
-    -String ciArbitro
+    -String CI_Arbitro
   }
 
   class Cita {
@@ -192,8 +192,8 @@ const { svg } = await mermaid.render('diagrama-svg', `classDiagram
     -LocalTime horaCita
     -String estado
     -String observaciones
-    -String ciMedico
-    -String ciJugador
+    -String CImedico
+    -String CI_Jugador
     +confirmar() Unit
     +cancelar(motivo) Unit
     +reprogramar(fecha, hora) Unit

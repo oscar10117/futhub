@@ -32,6 +32,7 @@ val BlancoFH = Color(0xFFFFFFFF)
 val FondoFH = Color(0xFFF4F4F4)
 val GrisFH = Color(0xFF666666)
 val GrisClaroFH = Color(0xFFE7E7E7)
+val RojoFH = Color(0xFFB00020)
 
 class MainActivity : ComponentActivity() {
 
@@ -60,6 +61,46 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// Una pestaña de la barra inferior: título, símbolo y la pantalla que muestra.
+// Qué pestañas existen depende del rol (ver pestanasPara), así que cada rol
+// solo ve las herramientas que le corresponden.
+private data class PestanaNav(
+    val titulo: String,
+    val icono: String,
+    val subtitulo: String,
+    val contenido: @Composable () -> Unit
+)
+
+@Composable
+private fun pestanasPara(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit,
+    abrir: (Int) -> Unit
+): List<PestanaNav> = when (vm.rol) {
+    Rol.JUGADOR -> listOf(
+        PestanaNav("Inicio", "◉", "Todo listo para jugar") { Inicio(vm, abrir) },
+        PestanaNav("Fichas", "＋", "Tu revisión, sin filas") { FichasJugador(vm, avisar) },
+        PestanaNav("Equipos", "▤", "Equipos y jugadores") { Equipos(vm) },
+        PestanaNav("Torneo", "☆", "El torneo en tus manos") { Torneos(vm, avisar) }
+    )
+
+    Rol.MEDICO -> listOf(
+        PestanaNav("Inicio", "◉", "Todo listo para atender") { Inicio(vm, abrir) },
+        PestanaNav("Agenda", "⚕", "Atiende tus citas del día") { AgendaMedico(vm) }
+    )
+
+    Rol.ARBITRO -> listOf(
+        PestanaNav("Inicio", "◉", "Todo listo para dirigir") { Inicio(vm, abrir) },
+        PestanaNav("Partidos", "⚑", "Resultados y tarjetas") { PartidosArbitro(vm, avisar) }
+    )
+
+    Rol.ORGANIZADOR -> listOf(
+        PestanaNav("Inicio", "◉", "El torneo en tus manos") { Inicio(vm, abrir) },
+        PestanaNav("Equipos", "▤", "Agrega o elimina equipos") { EquiposAdmin(vm, avisar) },
+        PestanaNav("Torneo", "☆", "Formato, fixture y tabla") { Torneos(vm, avisar) }
+    )
+}
+
 @Composable
 fun CanchaApp(vm: CanchaViewModel = viewModel()) {
 
@@ -82,9 +123,15 @@ fun CanchaApp(vm: CanchaViewModel = viewModel()) {
         return
     }
 
-    var pagina by rememberSaveable {
+    // La pestaña activa se reinicia a "Inicio" cada vez que cambia el rol
+    // (por ejemplo al cerrar sesión y entrar con otra cuenta), para no
+    // quedar apuntando a un índice que ese rol ya no tiene.
+    var pagina by rememberSaveable(vm.rol) {
         mutableIntStateOf(0)
     }
+
+    val tabs = pestanasPara(vm, avisar) { pagina = it }
+    val paginaActual = pagina.coerceIn(0, tabs.lastIndex)
 
     Scaffold(
         containerColor = FondoFH,
@@ -95,14 +142,9 @@ fun CanchaApp(vm: CanchaViewModel = viewModel()) {
             NavigationBar(
                 containerColor = NegroFH
             ) {
-                listOf(
-                    "Inicio",
-                    "Fichas",
-                    "Equipos",
-                    "Torneo"
-                ).forEachIndexed { i, titulo ->
+                tabs.forEachIndexed { i, tab ->
                     NavigationBarItem(
-                        selected = pagina == i,
+                        selected = paginaActual == i,
                         onClick = {
                             pagina = i
                         },
@@ -114,18 +156,10 @@ fun CanchaApp(vm: CanchaViewModel = viewModel()) {
                             unselectedTextColor = BlancoFH
                         ),
                         icon = {
-                            Text(
-                                listOf(
-                                    "◉",
-                                    "＋",
-                                    "▤",
-                                    "☆"
-                                )[i],
-                                fontSize = 23.sp
-                            )
+                            Text(tab.icono, fontSize = 23.sp)
                         },
                         label = {
-                            Text(titulo)
+                            Text(tab.titulo)
                         }
                     )
                 }
@@ -151,12 +185,19 @@ fun CanchaApp(vm: CanchaViewModel = viewModel()) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "FUTHUB",
-                        color = NaranjaFH,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
+                    Column {
+                        Text(
+                            "FUTHUB",
+                            color = NaranjaFH,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            vm.rol.titulo,
+                            color = Color(0xFFBBBBBB),
+                            fontSize = 11.sp
+                        )
+                    }
 
                     TextButton(
                         onClick = { vm.cerrarSesion() }
@@ -166,12 +207,7 @@ fun CanchaApp(vm: CanchaViewModel = viewModel()) {
                 }
 
                 Text(
-                    listOf(
-                        "Todo listo para jugar",
-                        "Tu revisión, sin filas",
-                        "Equipos y jugadores",
-                        "El torneo en tus manos"
-                    )[pagina],
+                    tabs[paginaActual].subtitulo,
                     color = BlancoFH,
                     fontSize = 25.sp,
                     fontWeight = FontWeight.Bold
@@ -188,64 +224,17 @@ fun CanchaApp(vm: CanchaViewModel = viewModel()) {
                 )
             }
 
-            // SELECTOR DE ROLES (Opcional para pruebas)
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(
-                        rememberScrollState()
-                    )
-                    .padding(
-                        horizontal = 16.dp,
-                        vertical = 10.dp
-                    ),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Rol.entries.forEach { rol ->
-                    FilterChip(
-                        selected = vm.rol == rol,
-                        onClick = {
-                            vm.rol = rol
-                        },
-                        label = {
-                            Text(rol.titulo)
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = BlancoFH,
-                            labelColor = NegroFH,
-                            selectedContainerColor = NaranjaFH,
-                            selectedLabelColor = NegroFH
-                        )
-                    )
-                }
-            }
-
             Column(
                 Modifier
                     .weight(1f)
                     .verticalScroll(
                         rememberScrollState()
                     )
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                when (pagina) {
-                    0 -> Inicio(vm) {
-                        pagina = it
-                    }
-
-                    1 -> Fichas(
-                        vm,
-                        avisar
-                    )
-
-                    2 -> Equipos(vm)
-
-                    3 -> Torneos(
-                        vm,
-                        avisar
-                    )
-                }
+                tabs[paginaActual].contenido()
 
                 Spacer(
                     Modifier.height(16.dp)
@@ -325,19 +314,41 @@ private fun Estado(
     )
 }
 
+// Pantalla de inicio: el mensaje y el botón principal cambian según el rol,
+// cada quien ve la acción que más usa (reservar, atender, dirigir o
+// configurar) en vez de una pantalla genérica para todos.
 @Composable
 private fun Inicio(
     vm: CanchaViewModel,
     abrir: (Int) -> Unit
 ) {
     Titulo(
-        "Hola, ${
-            vm.usuarios.first {
-                it.rol == vm.rol
-            }.nombre
-        }",
+        "Hola, ${vm.usuarioLogueado?.nombre ?: ""}",
         "Copa local · La Paz, Bolivia"
     )
+
+    val (mensaje, textoBoton, destino) = when (vm.rol) {
+        Rol.JUGADOR -> Triple(
+            "Reserva tu revisión y consulta tu habilitación para el torneo.",
+            "Reservar ficha médica",
+            1
+        )
+        Rol.MEDICO -> Triple(
+            "Revisa las solicitudes de los jugadores y decide quién queda habilitado.",
+            "Ver agenda del día",
+            1
+        )
+        Rol.ARBITRO -> Triple(
+            "Carga resultados y registra tarjetas de tus partidos.",
+            "Ver partidos",
+            1
+        )
+        Rol.ORGANIZADOR -> Triple(
+            "Arma los equipos, elige el formato y controla el torneo de principio a fin.",
+            "Configurar torneo",
+            2
+        )
+    }
 
     Panel {
         Text(
@@ -355,18 +366,14 @@ private fun Inicio(
             color = NegroFH
         )
 
-        Text(
-            "Reserva tu revisión y consulta tu habilitación para el torneo."
-        )
+        Text(mensaje)
 
         Button(
-            onClick = {
-                abrir(1)
-            },
+            onClick = { abrir(destino) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                "Reservar ficha médica",
+                textoBoton,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -427,269 +434,212 @@ private fun Inicio(
         }
     }
 
-    Panel {
-        Titulo(
-            vm.torneo.nombre,
-            vm.torneo.formato.titulo
-        )
-
-        Text(
-            "${vm.partidos.size} partidos en el fixture"
-        )
-
-        OutlinedButton(
-            onClick = {
-                abrir(3)
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                "Ver torneo"
+    // El resumen del torneo solo tiene sentido para quien tiene pestaña de
+    // Torneo (jugador y organizador); médico y árbitro no la necesitan aquí.
+    if (vm.rol == Rol.JUGADOR || vm.rol == Rol.ORGANIZADOR) {
+        Panel {
+            Titulo(
+                vm.torneo.nombre,
+                vm.torneo.formato.titulo
             )
-        }
 
-        TextButton(
-            onClick = {
-                abrir(2)
+            Text(
+                "${vm.partidos.size} partidos en el fixture"
+            )
+
+            OutlinedButton(
+                onClick = { abrir(if (vm.rol == Rol.ORGANIZADOR) 2 else 3) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Ver torneo")
             }
-        ) {
-            Text(
-                "Consultar jugadores por equipo →"
-            )
+
+            if (vm.rol == Rol.JUGADOR) {
+                TextButton(
+                    onClick = { abrir(2) }
+                ) {
+                    Text("Consultar jugadores por equipo →")
+                }
+            }
         }
     }
 }
 
+// --- JUGADOR: reservar ficha médica y ver el estado de sus solicitudes ---
 @Composable
-private fun Fichas(
+private fun FichasJugador(
     vm: CanchaViewModel,
     avisar: (String) -> Unit
 ) {
-    if (vm.rol == Rol.JUGADOR) {
-        Titulo(
-            "Reserva una ficha",
-            "Jugador: ${
-                vm.jugador(
-                    vm.jugadorActualId
-                ).nombre
-            } · ${vm.torneo.nombre}"
+    Titulo(
+        "Reserva una ficha",
+        "Jugador: ${vm.jugador(vm.jugadorActualId).nombre} · ${vm.torneo.nombre}"
+    )
+
+    Estado(
+        if (vm.habilitado(vm.jugadorActualId)) "Habilitado para jugar" else "Aún no habilitado",
+        vm.habilitado(vm.jugadorActualId)
+    )
+
+    var horarioId by rememberSaveable {
+        mutableIntStateOf(-1)
+    }
+
+    Panel {
+        Text(
+            "Dra. Ana Rojas",
+            fontWeight = FontWeight.Bold
         )
 
-        Estado(
-            if (
-                vm.habilitado(
-                    vm.jugadorActualId
+        Text(
+            "Revisión presencial · Centro médico de la asociación",
+            fontSize = 13.sp
+        )
+
+        vm.horarios
+            .groupBy { it.fecha }
+            .forEach { (fecha, horarios) ->
+                Text(
+                    fecha,
+                    fontWeight = FontWeight.SemiBold
                 )
-            )
-                "Habilitado para jugar"
-            else
-                "Aún no habilitado",
-            vm.habilitado(
-                vm.jugadorActualId
-            )
-        )
 
-        var horarioId by rememberSaveable {
-            mutableIntStateOf(-1)
-        }
-
-        Panel {
-            Text(
-                "Dra. Ana Rojas",
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                "Revisión presencial · Centro médico de la asociación",
-                fontSize = 13.sp
-            )
-
-            vm.horarios
-                .groupBy {
-                    it.fecha
-                }
-                .forEach { (fecha, horarios) ->
-                    Text(
-                        fecha,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Row(
-                        Modifier.horizontalScroll(
-                            rememberScrollState()
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        horarios.forEach { h ->
-                            FilterChip(
-                                selected = horarioId == h.id,
-                                onClick = {
-                                    horarioId = h.id
-                                },
-                                enabled = vm.disponible(h.id),
-                                label = {
-                                    Text(h.hora)
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = NaranjaFH,
-                                    selectedLabelColor = NegroFH
-                                )
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    horarios.forEach { h ->
+                        FilterChip(
+                            selected = horarioId == h.id,
+                            onClick = { horarioId = h.id },
+                            enabled = vm.disponible(h.id),
+                            label = { Text(h.hora) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = NaranjaFH,
+                                selectedLabelColor = NegroFH
                             )
-                        }
+                        )
                     }
                 }
-
-            Button(
-                onClick = {
-                    avisar(
-                        vm.reservar(
-                            horarioId
-                        )
-                    )
-                },
-                enabled = horarioId != -1 &&
-                        vm.disponible(horarioId) &&
-                        !vm.habilitado(vm.jugadorActualId),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    "Solicitar ficha"
-                )
             }
 
-            Text(
-                "La reserva queda pendiente hasta que el médico la acepte.",
-                fontSize = 12.sp,
-                color = GrisFH
-            )
+        Button(
+            onClick = { avisar(vm.reservar(horarioId)) },
+            enabled = horarioId != -1 &&
+                    vm.disponible(horarioId) &&
+                    !vm.habilitado(vm.jugadorActualId),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Solicitar ficha")
         }
 
-    } else if (vm.rol != Rol.MEDICO) {
+        Text(
+            "La reserva queda pendiente hasta que el médico la acepte.",
+            fontSize = 12.sp,
+            color = GrisFH
+        )
+    }
+
+    Titulo("Mis fichas")
+
+    val misFichas = vm.fichas.filter { it.jugadorId == vm.jugadorActualId }
+
+    if (misFichas.isEmpty()) {
         Panel {
-            Titulo(
-                "Agenda médica"
-            )
-
-            Text(
-                "Cambia al perfil Jugador para reservar o al perfil Médico para atender solicitudes."
-            )
+            Text("Todavía no hay solicitudes. Elige un horario arriba.")
         }
-
         return
     }
 
-    Titulo(
-        if (vm.rol == Rol.MEDICO)
-            "Solicitudes médicas"
-        else
-            "Mis fichas"
-    )
+    misFichas.reversed().forEach { ficha ->
+        val horario = vm.horarios.first { it.id == ficha.horarioId }
 
-    val visibles = vm.fichas.filter {
-        vm.rol == Rol.MEDICO || it.jugadorId == vm.jugadorActualId
-    }
-
-    if (visibles.isEmpty()) {
         Panel {
             Text(
-                "Todavía no hay solicitudes. Reserva una ficha desde el perfil Jugador."
+                "Ficha #${ficha.id}",
+                fontWeight = FontWeight.Bold
+            )
+
+            Text("${horario.fecha} · ${horario.hora}")
+
+            Estado(
+                ficha.estado.name,
+                ficha.estado in listOf(EstadoFicha.ACEPTADA, EstadoFicha.ATENDIDA, EstadoFicha.APTO)
             )
         }
     }
+}
 
-    visibles
-        .reversed()
-        .forEach { ficha ->
-            val horario = vm.horarios.first {
-                it.id == ficha.horarioId
-            }
+// --- MÉDICO: aceptar/rechazar solicitudes y marcar apto/no apto ---
+@Composable
+private fun AgendaMedico(
+    vm: CanchaViewModel
+) {
+    Titulo(
+        "Solicitudes médicas",
+        "Fichas de revisión de todos los jugadores"
+    )
 
-            Panel {
-                Text(
-                    "Ficha #${ficha.id} · ${
-                        vm.jugador(
-                            ficha.jugadorId
-                        ).nombre
-                    }",
-                    fontWeight = FontWeight.Bold
-                )
+    if (vm.fichas.isEmpty()) {
+        Panel {
+            Text("Todavía no hay solicitudes de los jugadores.")
+        }
+        return
+    }
 
-                Text(
-                    "${horario.fecha} · ${horario.hora}"
-                )
+    vm.fichas.reversed().forEach { ficha ->
+        val horario = vm.horarios.first { it.id == ficha.horarioId }
 
-                Estado(
-                    ficha.estado.name,
-                    ficha.estado in listOf(
-                        EstadoFicha.ACEPTADA,
-                        EstadoFicha.ATENDIDA
-                    )
-                )
+        Panel {
+            Text(
+                "Ficha #${ficha.id} · ${vm.jugador(ficha.jugadorId).nombre}",
+                fontWeight = FontWeight.Bold
+            )
 
-                if (vm.rol == Rol.MEDICO && ficha.estado == EstadoFicha.PENDIENTE) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                vm.responder(
-                                    ficha,
-                                    true
-                                )
-                            }
-                        ) {
-                            Text("Aceptar")
-                        }
+            Text("${horario.fecha} · ${horario.hora}")
 
-                        OutlinedButton(
-                            onClick = {
-                                vm.responder(
-                                    ficha,
-                                    false
-                                )
-                            }
-                        ) {
-                            Text("Rechazar")
-                        }
+            Estado(
+                ficha.estado.name,
+                ficha.estado in listOf(EstadoFicha.ACEPTADA, EstadoFicha.ATENDIDA, EstadoFicha.APTO)
+            )
+
+            if (ficha.estado == EstadoFicha.PENDIENTE) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(onClick = { vm.responder(ficha.id, true) }) {
+                        Text("Aceptar")
+                    }
+
+                    OutlinedButton(onClick = { vm.responder(ficha.id, false) }) {
+                        Text("Rechazar")
                     }
                 }
+            }
 
-                if (vm.rol == Rol.MEDICO && ficha.estado == EstadoFicha.ACEPTADA) {
-                    Text(
-                        "Después de la revisión presencial:",
-                        fontSize = 13.sp
-                    )
+            if (ficha.estado == EstadoFicha.ACEPTADA) {
+                Text(
+                    "Después de la revisión presencial:",
+                    fontSize = 13.sp
+                )
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                vm.evaluar(
-                                    ficha,
-                                    true
-                                )
-                            }
-                        ) {
-                            Text("Apto")
-                        }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(onClick = { vm.evaluar(ficha.id, true) }) {
+                        Text("Apto")
+                    }
 
-                        OutlinedButton(
-                            onClick = {
-                                vm.evaluar(
-                                    ficha,
-                                    false
-                                )
-                            }
-                        ) {
-                            Text("No apto")
-                        }
+                    OutlinedButton(onClick = { vm.evaluar(ficha.id, false) }) {
+                        Text("No apto")
                     }
                 }
             }
         }
+    }
 }
 
+// --- Lectura de planteles (jugador: solo consulta, no puede editar) ---
 @Composable
 private fun Equipos(
     vm: CanchaViewModel
@@ -708,22 +658,14 @@ private fun Equipos(
     )
 
     Row(
-        Modifier.horizontalScroll(
-            rememberScrollState()
-        ),
+        Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         vm.equipos.forEach { equipo ->
             FilterChip(
                 selected = equipoId == equipo.id,
-                onClick = {
-                    equipoId = equipo.id
-                },
-                label = {
-                    Text(
-                        equipo.sigla
-                    )
-                },
+                onClick = { equipoId = equipo.id },
+                label = { Text(equipo.sigla) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = NaranjaFH,
                     selectedLabelColor = NegroFH
@@ -733,15 +675,10 @@ private fun Equipos(
     }
 
     Panel {
-        Titulo(
-            vm.equipo(equipoId).nombre
-        )
+        Titulo(vm.equipo(equipoId).nombre)
 
         Estado(
-            if (equipoId in vm.torneo.equipoIds)
-                "Equipo inscrito"
-            else
-                "No inscrito en este torneo",
+            if (equipoId in vm.torneo.equipoIds) "Equipo inscrito" else "No inscrito en este torneo",
             equipoId in vm.torneo.equipoIds
         )
 
@@ -750,14 +687,10 @@ private fun Equipos(
         ) {
             Checkbox(
                 checked = soloHabilitados,
-                onCheckedChange = {
-                    soloHabilitados = it
-                }
+                onCheckedChange = { soloHabilitados = it }
             )
 
-            Text(
-                "Mostrar solo habilitados"
-            )
+            Text("Mostrar solo habilitados")
         }
 
         val lista = vm.jugadores.filter {
@@ -765,15 +698,11 @@ private fun Equipos(
         }
 
         if (lista.isEmpty()) {
-            Text(
-                "No hay jugadores habilitados en este plantel."
-            )
+            Text("No hay jugadores habilitados en este plantel.")
         }
 
         lista.forEach { jugador ->
-            HorizontalDivider(
-                color = GrisClaroFH
-            )
+            HorizontalDivider(color = GrisClaroFH)
 
             Text(
                 "${jugador.dorsal.toString().padStart(2, '0')}   ${jugador.nombre}",
@@ -781,10 +710,7 @@ private fun Equipos(
             )
 
             Estado(
-                if (vm.habilitado(jugador.id))
-                    "Habilitado"
-                else
-                    "No habilitado",
+                if (vm.habilitado(jugador.id)) "Habilitado" else "No habilitado",
                 vm.habilitado(jugador.id)
             )
         }
@@ -797,6 +723,226 @@ private fun Equipos(
     )
 }
 
+// --- ORGANIZADOR: alta y baja de equipos del padrón general ---
+@Composable
+private fun EquiposAdmin(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit
+) {
+    var nombreNuevo by rememberSaveable { mutableStateOf("") }
+    var siglaNueva by rememberSaveable { mutableStateOf("") }
+
+    Titulo(
+        "Equipos",
+        "Agrega o elimina equipos del padrón general"
+    )
+
+    Panel {
+        Text("Agregar equipo", fontWeight = FontWeight.Bold)
+
+        OutlinedTextField(
+            value = nombreNuevo,
+            onValueChange = { nombreNuevo = it },
+            label = { Text("Nombre") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = siglaNueva,
+            onValueChange = { siglaNueva = it },
+            label = { Text("Sigla") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Button(
+            onClick = {
+                if (nombreNuevo.isBlank() || siglaNueva.isBlank()) {
+                    avisar("Completa nombre y sigla")
+                } else {
+                    vm.agregarEquipo(nombreNuevo.trim(), siglaNueva.trim())
+                    nombreNuevo = ""
+                    siglaNueva = ""
+                    avisar("Equipo agregado")
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Agregar equipo")
+        }
+    }
+
+    if (vm.equipos.isEmpty()) {
+        Panel {
+            Text("No hay equipos registrados.")
+        }
+        return
+    }
+
+    var equipoId by rememberSaveable { mutableIntStateOf(vm.equipos.first().id) }
+    if (vm.equipos.none { it.id == equipoId }) {
+        equipoId = vm.equipos.first().id
+    }
+
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        vm.equipos.forEach { equipo ->
+            FilterChip(
+                selected = equipoId == equipo.id,
+                onClick = { equipoId = equipo.id },
+                label = { Text(equipo.sigla) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = NaranjaFH,
+                    selectedLabelColor = NegroFH
+                )
+            )
+        }
+    }
+
+    val equipoActual = vm.equipo(equipoId)
+
+    Panel {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Titulo(equipoActual.nombre)
+
+            TextButton(
+                onClick = {
+                    vm.eliminarEquipo(equipoActual.id)
+                    avisar("Equipo eliminado")
+                }
+            ) {
+                Text("Eliminar", color = RojoFH)
+            }
+        }
+
+        Estado(
+            if (equipoId in vm.torneo.equipoIds) "Inscrito en ${vm.torneo.nombre}" else "No inscrito en este torneo",
+            equipoId in vm.torneo.equipoIds
+        )
+
+        vm.jugadores.filter { it.equipoId == equipoId }.forEach { jugador ->
+            HorizontalDivider(color = GrisClaroFH)
+
+            Text(
+                "${jugador.dorsal.toString().padStart(2, '0')}   ${jugador.nombre}",
+                fontWeight = FontWeight.Bold
+            )
+
+            Estado(
+                if (vm.habilitado(jugador.id)) "Habilitado" else "No habilitado",
+                vm.habilitado(jugador.id)
+            )
+        }
+    }
+
+    Text(
+        "Para elegir qué equipos juegan este torneo y el formato, entra a Torneo → Configurar.",
+        fontSize = 12.sp,
+        color = GrisFH
+    )
+}
+
+// --- ÁRBITRO: cargar resultado y registrar tarjetas por partido ---
+@Composable
+private fun PartidosArbitro(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit
+) {
+    var resultado by remember { mutableStateOf<Partido?>(null) }
+    var tarjetaPartido by remember { mutableStateOf<Partido?>(null) }
+
+    Titulo(
+        "Partidos",
+        "${vm.torneo.nombre} · resultados y tarjetas"
+    )
+
+    if (vm.partidos.isEmpty()) {
+        Panel {
+            Text("Todavía no hay partidos programados por el organizador.")
+        }
+        return
+    }
+
+    vm.partidos.groupBy { it.ronda }.forEach { (ronda, partidos) ->
+        Titulo(if (vm.torneo.formato == Formato.LIGA) "Fecha $ronda" else "Ronda $ronda")
+
+        partidos.forEach { partido ->
+            Panel {
+                Text(
+                    "${vm.equipo(partido.localId).nombre}  vs  ${partido.visitanteId?.let { vm.equipo(it).nombre } ?: "Pase libre"}",
+                    fontWeight = FontWeight.Bold
+                )
+
+                when {
+                    partido.visitanteId == null -> Estado("Clasifica automáticamente")
+                    partido.finalizado() -> Text(
+                        "${partido.golesLocal} — ${partido.golesVisitante}",
+                        fontSize = 27.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NaranjaFH
+                    )
+                    else -> Estado("Pendiente", false)
+                }
+
+                val tarjetasPartido = vm.tarjetasDe(partido.id)
+                tarjetasPartido.forEach { t ->
+                    Text(
+                        "${if (t.tipo == TipoTarjeta.ROJA) "🟥" else "🟨"} ${vm.jugador(t.jugadorId).nombre} · min ${t.minuto}",
+                        fontSize = 12.sp
+                    )
+                }
+
+                if (partido.visitanteId != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(onClick = { resultado = partido }) {
+                            Text(if (partido.finalizado()) "Modificar resultado" else "Cargar resultado")
+                        }
+
+                        OutlinedButton(onClick = { tarjetaPartido = partido }) {
+                            Text("Tarjeta")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    resultado?.let { p ->
+        ResultadoDialogo(
+            vm = vm,
+            partido = p,
+            cerrar = { resultado = null },
+            alGuardar = { gl, gv, penal ->
+                vm.registrarResultado(p.id, gl, gv, penal)
+                avisar("Resultado guardado")
+            }
+        )
+    }
+
+    tarjetaPartido?.let { p ->
+        TarjetaDialogo(
+            vm = vm,
+            partido = p,
+            cerrar = { tarjetaPartido = null },
+            alGuardar = { jugadorId, tipo, minuto ->
+                vm.agregarTarjeta(p.id, jugadorId, tipo, minuto)
+                avisar("Tarjeta registrada")
+            }
+        )
+    }
+}
+
+// --- ORGANIZADOR: formato del torneo, fixture y tabla; también visible
+// (en modo lectura) para el jugador ---
 @Composable
 private fun Torneos(
     vm: CanchaViewModel,
@@ -831,9 +977,7 @@ private fun Torneos(
         )
 
         Text(
-            vm.torneo.equipoIds.joinToString(" · ") {
-                vm.equipo(it).sigla
-            },
+            vm.torneo.equipoIds.joinToString(" · ") { vm.equipo(it).sigla },
             fontSize = 13.sp
         )
 
@@ -952,7 +1096,9 @@ private fun Torneos(
                     Estado("Pendiente", false)
                 }
 
-                if ((vm.rol == Rol.ARBITRO || vm.rol == Rol.ORGANIZADOR) && partido.visitanteId != null) {
+                // Solo el organizador edita resultados desde aquí; el árbitro
+                // lo hace desde su propia pestaña de Partidos.
+                if (vm.rol == Rol.ORGANIZADOR && partido.visitanteId != null) {
                     OutlinedButton(
                         onClick = { resultado = partido }
                     ) {
@@ -965,12 +1111,11 @@ private fun Torneos(
 
     resultado?.let { p ->
         ResultadoDialogo(
+            vm = vm,
             partido = p,
             cerrar = { resultado = null },
-            alGuardar = { gl, gv ->
-                p.golesLocal = gl
-                p.golesVisitante = gv
-                vm.partidos = vm.partidos.toList()
+            alGuardar = { gl, gv, penal ->
+                vm.registrarResultado(p.id, gl, gv, penal)
                 avisar("Resultado guardado")
             }
         )
@@ -996,6 +1141,8 @@ private fun Configurar(
             label = { Text("Nombre del torneo") },
             modifier = Modifier.fillMaxWidth()
         )
+
+        Text("Tipo de torneo:", fontWeight = FontWeight.Bold)
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Formato.entries.forEach { f ->
@@ -1047,12 +1194,19 @@ private fun Configurar(
 
 @Composable
 private fun ResultadoDialogo(
+    vm: CanchaViewModel,
     partido: Partido,
     cerrar: () -> Unit,
-    alGuardar: (Int, Int) -> Unit
+    alGuardar: (Int, Int, Int?) -> Unit
 ) {
     var gl by rememberSaveable { mutableStateOf(partido.golesLocal?.toString() ?: "0") }
     var gv by rememberSaveable { mutableStateOf(partido.golesVisitante?.toString() ?: "0") }
+    var penalGanador by rememberSaveable { mutableStateOf(partido.ganadorPenalesId) }
+
+    val empatado = gl.toIntOrNull() != null && gl.toIntOrNull() == gv.toIntOrNull()
+    // Solo en eliminación directa un empate necesita penales: en liga el
+    // empate ya se refleja en la tabla de posiciones tal cual.
+    val necesitaPenales = empatado && vm.torneo.formato == Formato.ELIMINACION && partido.visitanteId != null
 
     AlertDialog(
         onDismissRequest = cerrar,
@@ -1061,24 +1215,41 @@ private fun ResultadoDialogo(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = gl,
-                    onValueChange = { gl = it },
+                    onValueChange = { gl = it; penalGanador = null },
                     label = { Text("Goles Local") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 OutlinedTextField(
                     value = gv,
-                    onValueChange = { gv = it },
+                    onValueChange = { gv = it; penalGanador = null },
                     label = { Text("Goles Visitante") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
+
+                if (necesitaPenales) {
+                    Text("Empate: define el ganador por penales", fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = penalGanador == partido.localId,
+                            onClick = { penalGanador = partido.localId },
+                            label = { Text(vm.equipo(partido.localId).sigla) }
+                        )
+                        FilterChip(
+                            selected = penalGanador == partido.visitanteId,
+                            onClick = { penalGanador = partido.visitanteId },
+                            label = { Text(vm.equipo(partido.visitanteId!!).sigla) }
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
             Button(
+                enabled = !necesitaPenales || penalGanador != null,
                 onClick = {
                     val g1 = gl.toIntOrNull() ?: 0
                     val g2 = gv.toIntOrNull() ?: 0
-                    alGuardar(g1, g2)
+                    alGuardar(g1, g2, if (g1 == g2) penalGanador else null)
                     cerrar()
                 }
             ) {
@@ -1092,6 +1263,81 @@ private fun ResultadoDialogo(
         }
     )
 }
+
+@Composable
+private fun TarjetaDialogo(
+    vm: CanchaViewModel,
+    partido: Partido,
+    cerrar: () -> Unit,
+    alGuardar: (Int, TipoTarjeta, Int) -> Unit
+) {
+    val jugadoresPartido = vm.jugadores.filter {
+        it.equipoId == partido.localId || it.equipoId == partido.visitanteId
+    }
+
+    var jugadorId by rememberSaveable { mutableIntStateOf(jugadoresPartido.firstOrNull()?.id ?: -1) }
+    var tipo by rememberSaveable { mutableStateOf(TipoTarjeta.AMARILLA) }
+    var minuto by rememberSaveable { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = cerrar,
+        title = { Text("Registrar tarjeta") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Jugador", fontWeight = FontWeight.SemiBold)
+
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    jugadoresPartido.forEach { jugador ->
+                        FilterChip(
+                            selected = jugadorId == jugador.id,
+                            onClick = { jugadorId = jugador.id },
+                            label = { Text(jugador.nombre) }
+                        )
+                    }
+                }
+
+                Text("Tipo", fontWeight = FontWeight.SemiBold)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TipoTarjeta.entries.forEach { t ->
+                        FilterChip(
+                            selected = tipo == t,
+                            onClick = { tipo = t },
+                            label = { Text(t.titulo) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = minuto,
+                    onValueChange = { minuto = it },
+                    label = { Text("Minuto") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = jugadorId != -1,
+                onClick = {
+                    alGuardar(jugadorId, tipo, minuto.toIntOrNull() ?: 0)
+                    cerrar()
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = cerrar) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
 @Composable
 private fun LoginPantalla(
     vm: CanchaViewModel,

@@ -3,6 +3,11 @@ package com.example.canchabolivia.modelodiagrama
 import java.time.LocalDate
 import java.time.LocalTime
 
+// Espejo en código del diagrama de clases UML del sistema (clases, campos y
+// firmas de método exactamente como en el diagrama). Es documentación: cada
+// cuerpo queda en TODO() porque esta app usa un modelo simplificado para la
+// UI (ver Modelo.kt y CanchaViewModel.kt en el paquete de arriba).
+
 abstract class Persona {
     @JvmField protected var ci: String = ""
     @JvmField protected var nombreCompleto: String = ""
@@ -72,7 +77,7 @@ class Torneo {
     private var formato: String = ""
     private var cantidadGrupos: Int = 0
     private var clasificadosPorGrupo: Int = 0
-    private var CI_Organizador: String = ""
+    private var ciOrganizador: String = ""
 
     fun inscribirEquipo(equipo: Equipo): InscripcionEquipo { TODO() }
     fun cambiarEstado(estado: String) { TODO() }
@@ -128,7 +133,7 @@ class InscripcionEquipo {
 }
 
 class InscripcionJugador {
-    private var CI_Jugador: String = ""
+    private var ciJugador: String = ""
     private var idEquipo: Int = 0
     private var idTorneo: Int = 0
 
@@ -138,16 +143,16 @@ class InscripcionJugador {
 class Partido {
     private var idPartido: Int = 0
     private var idTorneo: Int = 0
-    private var idGrupo: Int = 0
+    private var idGrupo: Int? = null
     private var fase: String = ""
     private var nroFecha: Int = 0
-    private var fechaPartido: LocalDate? = null
+    private lateinit var fechaPartido: LocalDate
     private var golesLocal: Int = 0
     private var golesVisitante: Int = 0
     private var penalesLocal: Int = 0
     private var penalesVisitante: Int = 0
     private var estado: String = ""
-    private var motivoCancelacion: String = ""
+    private var motivoCancelacion: String? = null
     private var idEquipoLocal: Int = 0
     private var idEquipoVisitante: Int = 0
 
@@ -163,8 +168,8 @@ class Partido {
 class Tarjeta {
     private var idTarjeta: Int = 0
     private var idPartido: Int = 0
-    private var CI_Jugador: String = ""
-    private var CI_Arbitro: String = ""
+    private var ciJugador: String = ""
+    private var ciArbitro: String = ""
     private var tipo: String = ""
     private var minuto: Int = 0
 
@@ -173,17 +178,17 @@ class Tarjeta {
 
 class ArbitroPartido {
     private var idPartido: Int = 0
-    private var CI_Arbitro: String = ""
+    private var ciArbitro: String = ""
 }
 
 class Cita {
     private var idCita: Int = 0
-    private var fechaCita: LocalDate? = null
-    private var horaCita: LocalTime? = null
+    private lateinit var fechaCita: LocalDate
+    private lateinit var horaCita: LocalTime
     private var estado: String = ""
     private var observaciones: String = ""
-    private var CImedico: String = ""
-    private var CI_Jugador: String = ""
+    private var ciMedico: String = ""
+    private var ciJugador: String = ""
 
     fun confirmar() { TODO() }
     fun cancelar(motivo: String) { TODO() }

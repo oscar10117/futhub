@@ -1,12 +1,8 @@
 package com.example.canchabolivia
 
-import android.content.Context
-import android.widget.Toast
-import com.android.volley.Request
-import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
-import org.json.JSONObject
-import java.time.LocalDate
+// Modelo de datos de la app (versión simplificada que usa la UI/ViewModel).
+// El diagrama de clases completo (con todos los metodos del dominio) vive en
+// modelodiagrama/ModeloDiagrama.kt y es solo documentacion, no se usa en tiempo de ejecucion.
 
 enum class Rol(val titulo: String) {
     JUGADOR("Jugador"),
@@ -27,6 +23,11 @@ enum class EstadoFicha {
     ATENDIDA,
     APTO,
     NO_APTO
+}
+
+enum class TipoTarjeta(val titulo: String) {
+    AMARILLA("Amarilla"),
+    ROJA("Roja")
 }
 
 data class Usuario(
@@ -57,11 +58,16 @@ data class HorarioMedico(
     val hora: String
 )
 
+// Ojo: "estado" es `val` a propósito. Si fuera `var` y se mutara directo sobre
+// el objeto, una lista nueva construida a partir de esa mutación queda "igual"
+// (misma referencia de objeto, mismos campos) a ojos de Compose y la pantalla
+// no se actualiza. Por eso todo cambio de estado se hace con `copy()` desde el
+// ViewModel (ver responder/evaluar en CanchaViewModel).
 data class FichaMedica(
     val id: Int,
     val jugadorId: Int,
     val horarioId: Int,
-    var estado: EstadoFicha = EstadoFicha.PENDIENTE
+    val estado: EstadoFicha = EstadoFicha.PENDIENTE
 )
 
 data class Torneo(
@@ -70,17 +76,38 @@ data class Torneo(
     var equipoIds: MutableList<Int>
 )
 
+// Igual que FichaMedica: los goles son `val`, se actualizan con copy() para
+// que la pantalla de Torneo/Partidos refleje el resultado al instante.
 data class Partido(
     val id: Int,
     val ronda: Int,
     val localId: Int,
     val visitanteId: Int?,
-    var golesLocal: Int? = null,
-    var golesVisitante: Int? = null,
-    var ganadorPenalesId: Int? = null
+    val golesLocal: Int? = null,
+    val golesVisitante: Int? = null,
+    val ganadorPenalesId: Int? = null
 ) {
     fun finalizado(): Boolean = golesLocal != null && golesVisitante != null
+
+    // Pase libre (sin visitante) clasifica directo. Si hay empate en el
+    // marcador, decide el ganador de penales; sin penales cargados todavía
+    // no hay ganador (avanzar() debe esperar a que se definan).
+    fun ganadorId(): Int? = when {
+        visitanteId == null -> localId
+        !finalizado() -> null
+        golesLocal!! > golesVisitante!! -> localId
+        golesVisitante!! > golesLocal!! -> visitanteId
+        else -> ganadorPenalesId
+    }
 }
+
+data class Tarjeta(
+    val id: Int,
+    val partidoId: Int,
+    val jugadorId: Int,
+    val tipo: TipoTarjeta,
+    val minuto: Int
+)
 
 data class Posicion(
     val equipoId: Int,
@@ -137,47 +164,17 @@ object MotorTorneo {
                 .thenByDescending { it.favor }
         )
     }
-}
 
-fun realizarLogin(
-    context: Context,
-    emailInput: String,
-    passwordInput: String,
-    onSuccess: (String) -> Unit
-) {
-    val url = "http://10.0.2.2/canchabolivia/login.php"
-    val queue = Volley.newRequestQueue(context)
-    val stringRequest = object : StringRequest(
-        Request.Method.POST, url,
-        { response ->
-            try {
-                val json = JSONObject(response)
-                val status = json.getString("status")
-                val message = json.getString("message")
-
-                if (status == "success") {
-                    val usuarioObj = json.getJSONObject("usuario")
-                    val rol = usuarioObj.getString("rol")
-                    val nombre = usuarioObj.getString("nombre")
-                    Toast.makeText(context, "Bienvenido $nombre", Toast.LENGTH_SHORT).show()
-                    onSuccess(rol)
-                } else {
-                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: Exception) {
-                Toast.makeText(context, "Error al procesar la respuesta", Toast.LENGTH_SHORT).show()
-            }
-        },
-        { error ->
-            Toast.makeText(context, "Error de red: ${error.message}", Toast.LENGTH_SHORT).show()
+    // Arma los cruces de una ronda de eliminación directa emparejando la
+    // lista en orden (1ro vs 2do, 3ro vs 4to, ...). Si sobra un equipo al
+    // final, le toca pase libre. Se usa tanto para la ronda 1 (equipos del
+    // torneo) como para las siguientes (ganadores de la ronda anterior).
+    fun siguienteRondaEliminacion(equipoIds: List<Int>, ronda: Int, idInicial: Int): List<Partido> {
+        val partidos = mutableListOf<Partido>()
+        var siguienteId = idInicial
+        for (i in equipoIds.indices step 2) {
+            partidos.add(Partido(siguienteId++, ronda, equipoIds[i], equipoIds.getOrNull(i + 1)))
         }
-    ) {
-        override fun getParams(): MutableMap<String, String> {
-            val params = HashMap<String, String>()
-            params["email"] = emailInput
-            params["password"] = passwordInput
-            return params
-        }
+        return partidos
     }
-    queue.add(stringRequest)
 }

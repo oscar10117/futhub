@@ -1,0 +1,216 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor #F4F7F5
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #103E35
+skinparam ArrowColor #547C3A
+skinparam defaultFontName SansSerif
+skinparam classFontSize 14
+title Cancha Bolivia — Diagrama de clases (modelo completo v4)
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+abstract class Persona {
+#ci: String
+#nombreCompleto: String
+#email: String
+-contrasena: String
+-sesionActiva: Boolean
++iniciarSesion(email, contrasena): Boolean
++cerrarSesion(): void
++cambiarContrasena(actual, nueva): Boolean
++getCi(): String
++getNombreCompleto(): String
+}
+
+class Organizador {
++crearTorneo(nombre): Torneo
++cancelarTorneo(torneo, motivo): void
++inscribirEquipo(torneo, equipo): InscripcionEquipo
++retirarEquipo(torneo, equipo, motivo): void
++programarPartido(torneo, local, visitante, fecha): Partido
++cancelarPartido(partido, motivo): void
++reprogramarPartido(partido, fecha): void
++asignarArbitro(partido, arbitro): void
++iniciarTorneo(torneo): void
++levantarSuspension(jugador): void
+}
+
+class Jugador {
+-aptoMedico: Boolean
+-suspendido: Boolean
+-amarillas: Int
+-rojas: Int
++inscribirse(equipo, torneo): InscripcionJugador
++agendarCita(medico, fecha, hora): Cita
++registrarAmarilla(): void
++registrarRoja(): void
++setAptoMedico(apto): void
++setSuspendido(valor): void
++estaHabilitado(): Boolean
+}
+
+class Arbitro {
++dirigir(partido): ArbitroPartido
++agregarTarjeta(partido, jugador, tipo, minuto): Tarjeta
++registrarResultado(partido, golesLocal, golesVisitante): void
++registrarPenales(partido, penalesLocal, penalesVisitante): void
+}
+
+class Medico {
+-especialidad: String
++getEspecialidad(): String
++verCitasDelDia(fecha): List<Cita>
++atender(cita, observaciones): void
++habilitarJugador(jugador): void
++inhabilitarJugador(jugador, motivo): void
++reprogramarCita(cita, fecha, hora): void
++cancelarCita(cita, motivo): void
++verHistorial(jugador): List<Cita>
+}
+
+class Torneo {
+-idTorneo: Int
+-nombreTorneo: String
+-estado: String
+-formato: String
+-cantidadGrupos: Int
+-clasificadosPorGrupo: Int
+-CI_Organizador: String
++inscribirEquipo(equipo): InscripcionEquipo
++cambiarEstado(estado): void
++generarFixtureLiga(): List<Partido>
++sortearGrupos(): List<Grupo>
++generarFixtureGrupos(): List<Partido>
++generarLlaves(): List<Partido>
++avanzarRonda(): List<Partido>
++calcularTabla(): List<Posicion>
++listarPartidos(): List<Partido>
++getCampeon(): Equipo
+}
+
+class Grupo {
+-idGrupo: Int
+-idTorneo: Int
+-nombre: String
++agregarEquipo(equipo): void
++getTabla(): List<Posicion>
++getClasificados(cantidad): List<Equipo>
+}
+
+class Posicion {
+-idTorneo: Int
+-idGrupo: Int
+-idEquipo: Int
+-jugados: Int
+-ganados: Int
+-empatados: Int
+-perdidos: Int
+-golesFavor: Int
+-golesContra: Int
+-puntos: Int
++actualizar(golesFavor, golesContra): void
++diferenciaGoles(): Int
+}
+
+class Equipo {
+-idEquipo: Int
+-nombre: String
++inscribirJugador(jugador, torneo): InscripcionJugador
++listarJugadores(torneo): List<Jugador>
+}
+
+class InscripcionEquipo {
+-idTorneo: Int
+-idEquipo: Int
++estaVigente(): Boolean
+}
+
+class InscripcionJugador {
+-CI_Jugador: String
+-idEquipo: Int
+-idTorneo: Int
++estaVigente(): Boolean
+}
+
+class Partido {
+-idPartido: Int
+-idTorneo: Int
+-idGrupo: Int
+-fase: String
+-nroFecha: Int
+-fechaPartido: Date
+-golesLocal: Int
+-golesVisitante: Int
+-penalesLocal: Int
+-penalesVisitante: Int
+-estado: String
+-motivoCancelacion: String
+-idEquipoLocal: Int
+-idEquipoVisitante: Int
++registrarResultado(golesLocal, golesVisitante): void
++registrarPenales(penalesLocal, penalesVisitante): void
++esEmpate(): Boolean
++getGanador(): Equipo
++cancelar(motivo): void
++reprogramar(fecha): void
++estaCancelado(): Boolean
+}
+
+class Tarjeta {
+-idTarjeta: Int
+-idPartido: Int
+-CI_Jugador: String
+-CI_Arbitro: String
+-tipo: String
+-minuto: Int
++esRoja(): Boolean
+}
+
+class ArbitroPartido {
+-idPartido: Int
+-CI_Arbitro: String
+}
+
+class Cita {
+-idCita: Int
+-fechaCita: Date
+-horaCita: Time
+-estado: String
+-observaciones: String
+-CImedico: String
+-CI_Jugador: String
++confirmar(): void
++cancelar(motivo): void
++reprogramar(fecha, hora): void
++finalizar(observaciones): void
+}
+
+Persona <|-- Organizador
+Persona <|-- Jugador
+Persona <|-- Arbitro
+Persona <|-- Medico
+
+Organizador "1" -- "0..*" Torneo : crea
+Organizador "1" -- "0..*" InscripcionEquipo : inscribe
+Torneo "1" -- "0..*" Partido : programa
+Torneo "1" -- "0..*" Grupo : se divide en
+Grupo "1" -- "0..*" Posicion : contiene
+Equipo "1" -- "0..*" Posicion : ocupa
+Grupo "0..1" -- "0..*" Partido : agrupa
+Torneo "1" -- "0..*" InscripcionEquipo : recibe
+Equipo "1" -- "0..*" InscripcionEquipo : participa
+InscripcionEquipo "1" -- "0..*" InscripcionJugador : habilita
+Jugador "1" -- "0..*" InscripcionJugador : se inscribe
+Equipo "1" -- "0..*" Partido : juega local
+Equipo "1" -- "0..*" Partido : juega visitante
+Partido "1" -- "0..*" ArbitroPartido : es dirigido
+Arbitro "1" -- "0..*" ArbitroPartido : dirige
+Arbitro "1" -- "0..*" Tarjeta : muestra
+Jugador "1" -- "0..*" Tarjeta : recibe
+Partido "1" -- "0..*" Tarjeta : registra
+Medico "1" -- "0..*" Cita : atiende
+Jugador "1" -- "0..*" Cita : asiste
+
+@enduml

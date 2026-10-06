@@ -69,6 +69,18 @@ documentacion/Diagrama_Clases.png
   Diagrama UML de entidades, enumeraciones y clases de soporte.
 documentacion/Diagrama_Clases.puml
   Fuente UML editable, incluye también enumeraciones y clases de soporte.
+<<<<<<< HEAD
+documentacion/Diagrama_Clases_v4.puml y Diagrama_Clases_v4.png
+  Diagrama UML del modelo completo con herencia (Persona > Organizador,
+  Jugador, Arbitro, Medico) pedido para la entrega académica, con todas
+  las clases, atributos y métodos.
+app/src/main/java/com/example/canchabolivia/modelodiagrama/ModeloDiagrama.kt
+  Declaración vacía (sin lógica) de todas las clases y atributos del
+  Diagrama_Clases_v4, compilada como evidencia del modelo. No la usan
+  MainActivity, CanchaViewModel ni Modelo.kt: la app sigue funcionando
+  con su propio modelo simple.
+=======
+>>>>>>> 9bf19bafee863850b204005e92afb0d98b1cacda
 documentacion/PROMPT.txt
   Consigna organizada a partir de la explicación de la aplicación.
 

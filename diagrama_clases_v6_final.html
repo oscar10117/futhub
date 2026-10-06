@@ -1,0 +1,483 @@
+<<<<<<< HEAD
+<div id="diagrama"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+
+const themeMode = document.documentElement.dataset.mode;
+const dark = themeMode ? themeMode === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+
+await document.fonts.ready;
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"anthropic-sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"anthropic-sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+  },
+});
+
+const { svg } = await mermaid.render('diagrama-svg', `classDiagram
+  direction TB
+
+  class Persona {
+    <<abstract>>
+    #String ci
+    #String nombreCompleto
+    #String email
+    -String contrasena
+    -Boolean sesionActiva
+    +iniciarSesion(email, contrasena) Boolean
+    +cerrarSesion() Unit
+    +cambiarContrasena(actual, nueva) Boolean
+    +getCi() String
+    +getNombreCompleto() String
+  }
+
+  class Organizador {
+    +crearTorneo(nombre) Torneo
+    +cancelarTorneo(torneo, motivo) Unit
+    +inscribirEquipo(torneo, equipo) InscripcionEquipo
+    +retirarEquipo(torneo, equipo, motivo) Unit
+    +programarPartido(torneo, local, visitante, fecha) Partido
+    +cancelarPartido(partido, motivo) Unit
+    +reprogramarPartido(partido, fecha) Unit
+    +asignarArbitro(partido, arbitro) Unit
+    +iniciarTorneo(torneo) Unit
+    +levantarSuspension(jugador) Unit
+  }
+
+  class Jugador {
+    -Boolean aptoMedico
+    -Boolean suspendido
+    -Int amarillas
+    -Int rojas
+    +inscribirse(equipo, torneo) InscripcionJugador
+    +agendarCita(medico, fecha, hora) Cita
+    +registrarAmarilla() Unit
+    +registrarRoja() Unit
+    +setAptoMedico(apto) Unit
+    +setSuspendido(valor) Unit
+    +estaHabilitado() Boolean
+  }
+
+  class Arbitro {
+    +dirigir(partido) ArbitroPartido
+    +agregarTarjeta(partido, jugador, tipo, minuto) Tarjeta
+    +registrarResultado(partido, golesLocal, golesVisitante) Unit
+    +registrarPenales(partido, penalesLocal, penalesVisitante) Unit
+  }
+
+  class Medico {
+    -String especialidad
+    +getEspecialidad() String
+    +verCitasDelDia(fecha) List~Cita~
+    +atender(cita, observaciones) Unit
+    +habilitarJugador(jugador) Unit
+    +inhabilitarJugador(jugador, motivo) Unit
+    +reprogramarCita(cita, fecha, hora) Unit
+    +cancelarCita(cita, motivo) Unit
+    +verHistorial(jugador) List~Cita~
+  }
+
+  class Torneo {
+    -Int idTorneo
+    -String nombreTorneo
+    -String estado
+    -String formato
+    -Int cantidadGrupos
+    -Int clasificadosPorGrupo
+    -String CI_Organizador
+    +inscribirEquipo(equipo) InscripcionEquipo
+    +cambiarEstado(estado) Unit
+    +generarFixtureLiga() List~Partido~
+    +sortearGrupos() List~Grupo~
+    +generarFixtureGrupos() List~Partido~
+    +generarLlaves() List~Partido~
+    +avanzarRonda() List~Partido~
+    +calcularTabla() List~Posicion~
+    +listarPartidos() List~Partido~
+    +getCampeon() Equipo
+  }
+
+  class Grupo {
+    -Int idGrupo
+    -Int idTorneo
+    -String nombre
+    +agregarEquipo(equipo) Unit
+    +getTabla() List~Posicion~
+    +getClasificados(cantidad) List~Equipo~
+  }
+
+  class Posicion {
+    -Int idTorneo
+    -Int idGrupo
+    -Int idEquipo
+    -Int jugados
+    -Int ganados
+    -Int empatados
+    -Int perdidos
+    -Int golesFavor
+    -Int golesContra
+    -Int puntos
+    +actualizar(golesFavor, golesContra) Unit
+    +diferenciaGoles() Int
+  }
+
+  class Equipo {
+    -Int idEquipo
+    -String nombre
+    +inscribirJugador(jugador, torneo) InscripcionJugador
+    +listarJugadores(torneo) List~Jugador~
+  }
+
+  class InscripcionEquipo {
+    -Int idTorneo
+    -Int idEquipo
+    +estaVigente() Boolean
+  }
+
+  class InscripcionJugador {
+    -String CI_Jugador
+    -Int idEquipo
+    -Int idTorneo
+    +estaVigente() Boolean
+  }
+
+  class Partido {
+    -Int idPartido
+    -Int idTorneo
+    -Int idGrupo
+    -String fase
+    -Int nroFecha
+    -LocalDate fechaPartido
+    -Int golesLocal
+    -Int golesVisitante
+    -Int penalesLocal
+    -Int penalesVisitante
+    -String estado
+    -String motivoCancelacion
+    -Int idEquipoLocal
+    -Int idEquipoVisitante
+    +registrarResultado(golesLocal, golesVisitante) Unit
+    +registrarPenales(penalesLocal, penalesVisitante) Unit
+    +esEmpate() Boolean
+    +getGanador() Equipo
+    +cancelar(motivo) Unit
+    +reprogramar(fecha) Unit
+    +estaCancelado() Boolean
+  }
+
+  class Tarjeta {
+    -Int idTarjeta
+    -Int idPartido
+    -String CI_Jugador
+    -String CI_Arbitro
+    -String tipo
+    -Int minuto
+    +esRoja() Boolean
+  }
+
+  class ArbitroPartido {
+    -Int idPartido
+    -String CI_Arbitro
+  }
+
+  class Cita {
+    -Int idCita
+    -LocalDate fechaCita
+    -LocalTime horaCita
+    -String estado
+    -String observaciones
+    -String CImedico
+    -String CI_Jugador
+    +confirmar() Unit
+    +cancelar(motivo) Unit
+    +reprogramar(fecha, hora) Unit
+    +finalizar(observaciones) Unit
+  }
+
+  Persona <|-- Organizador
+  Persona <|-- Jugador
+  Persona <|-- Arbitro
+  Persona <|-- Medico
+
+  Organizador "1" -- "0..*" Torneo : crea
+  Organizador ..> InscripcionEquipo : inscribe
+
+  Torneo "1" -- "0..*" Partido : programa
+  Torneo "1" -- "0..*" Grupo : se divide en
+  Torneo "1" -- "0..*" Posicion : contiene
+  Torneo "1" -- "0..*" InscripcionEquipo : recibe
+  Torneo "1" -- "0..*" InscripcionJugador : registra
+
+  Grupo "1" -- "0..*" Posicion : contiene
+  Grupo "0..1" -- "0..*" Partido : agrupa
+
+  Equipo "1" -- "0..*" Posicion : ocupa
+  Equipo "1" -- "0..*" InscripcionEquipo : participa
+  Equipo "1" -- "0..*" InscripcionJugador : registra
+  Equipo "1" -- "0..*" Partido : juega local
+  Equipo "1" -- "0..*" Partido : juega visitante
+
+  Jugador "1" -- "0..*" InscripcionJugador : se inscribe
+  Jugador "1" -- "0..*" Tarjeta : recibe
+  Jugador "1" -- "0..*" Cita : asiste
+
+  Partido "1" -- "0..*" ArbitroPartido : es dirigido
+  Partido "1" -- "0..*" Tarjeta : registra
+
+  Arbitro "1" -- "0..*" ArbitroPartido : dirige
+  Arbitro "1" -- "0..*" Tarjeta : muestra
+
+  Medico "1" -- "0..*" Cita : atiende
+`);
+
+document.getElementById('diagrama').innerHTML = svg;
+</script>
+=======
+<div id="diagrama"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+
+const themeMode = document.documentElement.dataset.mode;
+const dark = themeMode ? themeMode === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+
+await document.fonts.ready;
+
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"anthropic-sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"anthropic-sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+  },
+});
+
+const { svg } = await mermaid.render('diagrama-svg', `classDiagram
+  direction TB
+
+  class Persona {
+    <<abstract>>
+    #String ci
+    #String nombreCompleto
+    #String email
+    -String contrasena
+    -Boolean sesionActiva
+    +iniciarSesion(email, contrasena) Boolean
+    +cerrarSesion() Unit
+    +cambiarContrasena(actual, nueva) Boolean
+    +getCi() String
+    +getNombreCompleto() String
+  }
+
+  class Organizador {
+    +crearTorneo(nombre) Torneo
+    +cancelarTorneo(torneo, motivo) Unit
+    +inscribirEquipo(torneo, equipo) InscripcionEquipo
+    +retirarEquipo(torneo, equipo, motivo) Unit
+    +programarPartido(torneo, local, visitante, fecha) Partido
+    +cancelarPartido(partido, motivo) Unit
+    +reprogramarPartido(partido, fecha) Unit
+    +asignarArbitro(partido, arbitro) Unit
+    +iniciarTorneo(torneo) Unit
+    +levantarSuspension(jugador) Unit
+  }
+
+  class Jugador {
+    -Boolean aptoMedico
+    -Boolean suspendido
+    -Int amarillas
+    -Int rojas
+    +inscribirse(equipo, torneo) InscripcionJugador
+    +agendarCita(medico, fecha, hora) Cita
+    +registrarAmarilla() Unit
+    +registrarRoja() Unit
+    +setAptoMedico(apto) Unit
+    +setSuspendido(valor) Unit
+    +estaHabilitado() Boolean
+  }
+
+  class Arbitro {
+    +dirigir(partido) ArbitroPartido
+    +agregarTarjeta(partido, jugador, tipo, minuto) Tarjeta
+    +registrarResultado(partido, golesLocal, golesVisitante) Unit
+    +registrarPenales(partido, penalesLocal, penalesVisitante) Unit
+  }
+
+  class Medico {
+    -String especialidad
+    +getEspecialidad() String
+    +verCitasDelDia(fecha) List~Cita~
+    +atender(cita, observaciones) Unit
+    +habilitarJugador(jugador) Unit
+    +inhabilitarJugador(jugador, motivo) Unit
+    +reprogramarCita(cita, fecha, hora) Unit
+    +cancelarCita(cita, motivo) Unit
+    +verHistorial(jugador) List~Cita~
+  }
+
+  class Torneo {
+    -Int idTorneo
+    -String nombreTorneo
+    -String estado
+    -String formato
+    -Int cantidadGrupos
+    -Int clasificadosPorGrupo
+    -String ciOrganizador
+    +inscribirEquipo(equipo) InscripcionEquipo
+    +cambiarEstado(estado) Unit
+    +generarFixtureLiga() List~Partido~
+    +sortearGrupos() List~Grupo~
+    +generarFixtureGrupos() List~Partido~
+    +generarLlaves() List~Partido~
+    +avanzarRonda() List~Partido~
+    +calcularTabla() List~Posicion~
+    +listarPartidos() List~Partido~
+    +getCampeon() Equipo
+  }
+
+  class Grupo {
+    -Int idGrupo
+    -Int idTorneo
+    -String nombre
+    +agregarEquipo(equipo) Unit
+    +getTabla() List~Posicion~
+    +getClasificados(cantidad) List~Equipo~
+  }
+
+  class Posicion {
+    -Int idTorneo
+    -Int idGrupo
+    -Int idEquipo
+    -Int jugados
+    -Int ganados
+    -Int empatados
+    -Int perdidos
+    -Int golesFavor
+    -Int golesContra
+    -Int puntos
+    +actualizar(golesFavor, golesContra) Unit
+    +diferenciaGoles() Int
+  }
+
+  class Equipo {
+    -Int idEquipo
+    -String nombre
+    +inscribirJugador(jugador, torneo) InscripcionJugador
+    +listarJugadores(torneo) List~Jugador~
+  }
+
+  class InscripcionEquipo {
+    -Int idTorneo
+    -Int idEquipo
+    +estaVigente() Boolean
+  }
+
+  class InscripcionJugador {
+    -String ciJugador
+    -Int idEquipo
+    -Int idTorneo
+    +estaVigente() Boolean
+  }
+
+  class Partido {
+    -Int idPartido
+    -Int idTorneo
+    -Int? idGrupo
+    -String fase
+    -Int nroFecha
+    -LocalDate fechaPartido
+    -Int golesLocal
+    -Int golesVisitante
+    -Int penalesLocal
+    -Int penalesVisitante
+    -String estado
+    -String? motivoCancelacion
+    -Int idEquipoLocal
+    -Int idEquipoVisitante
+    +registrarResultado(golesLocal, golesVisitante) Unit
+    +registrarPenales(penalesLocal, penalesVisitante) Unit
+    +esEmpate() Boolean
+    +getGanador() Equipo
+    +cancelar(motivo) Unit
+    +reprogramar(fecha) Unit
+    +estaCancelado() Boolean
+  }
+
+  class Tarjeta {
+    -Int idTarjeta
+    -Int idPartido
+    -String ciJugador
+    -String ciArbitro
+    -String tipo
+    -Int minuto
+    +esRoja() Boolean
+  }
+
+  class ArbitroPartido {
+    -Int idPartido
+    -String ciArbitro
+  }
+
+  class Cita {
+    -Int idCita
+    -LocalDate fechaCita
+    -LocalTime horaCita
+    -String estado
+    -String observaciones
+    -String ciMedico
+    -String ciJugador
+    +confirmar() Unit
+    +cancelar(motivo) Unit
+    +reprogramar(fecha, hora) Unit
+    +finalizar(observaciones) Unit
+  }
+
+  Persona <|-- Organizador
+  Persona <|-- Jugador
+  Persona <|-- Arbitro
+  Persona <|-- Medico
+
+  Organizador "1" -- "0..*" Torneo : crea
+  Organizador ..> InscripcionEquipo : inscribe
+
+  Torneo "1" -- "0..*" Partido : programa
+  Torneo "1" -- "0..*" Grupo : se divide en
+  Torneo "1" -- "0..*" Posicion : contiene
+  Torneo "1" -- "0..*" InscripcionEquipo : recibe
+  Torneo "1" -- "0..*" InscripcionJugador : registra
+
+  Grupo "1" -- "0..*" Posicion : contiene
+  Grupo "0..1" -- "0..*" Partido : agrupa
+
+  Equipo "1" -- "0..*" Posicion : ocupa
+  Equipo "1" -- "0..*" InscripcionEquipo : participa
+  Equipo "1" -- "0..*" InscripcionJugador : registra
+  Equipo "1" -- "0..*" Partido : juega local
+  Equipo "1" -- "0..*" Partido : juega visitante
+
+  Jugador "1" -- "0..*" InscripcionJugador : se inscribe
+  Jugador "1" -- "0..*" Tarjeta : recibe
+  Jugador "1" -- "0..*" Cita : asiste
+
+  Partido "1" -- "0..*" ArbitroPartido : es dirigido
+  Partido "1" -- "0..*" Tarjeta : registra
+
+  Arbitro "1" -- "0..*" ArbitroPartido : dirige
+  Arbitro "1" -- "0..*" Tarjeta : muestra
+
+  Medico "1" -- "0..*" Cita : atiende
+`);
+
+document.getElementById('diagrama').innerHTML = svg;
+</script>
+>>>>>>> 9bf19bafee863850b204005e92afb0d98b1cacda

@@ -24,29 +24,24 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
-// =====================================================
-// MAINACTIVITY.KT
-// Aquí está toda la interfaz (lo que se ve en pantalla).
-// Cada @Composable es un pedazo de pantalla. La lógica y los
-// datos vienen del ViewModel (vm).
-// =====================================================
-
-// ---------- COLORES FUTHUB ----------
-val NaranjaFH = Color(0xFFED9628)       // color principal
-val NaranjaClaroFH = Color(0xFFFFE2B8)  // fondo de las etiquetas positivas
+// COLORES FUTHUB
+val NaranjaFH = Color(0xFFED9628)
+val NaranjaClaroFH = Color(0xFFFFE2B8)
 val NegroFH = Color(0xFF000000)
 val BlancoFH = Color(0xFFFFFFFF)
-val FondoFH = Color(0xFFF4F4F4)         // fondo general de la app
-val GrisFH = Color(0xFF666666)          // textos secundarios
-val GrisClaroFH = Color(0xFFE7E7E7)     // fondo de las etiquetas negativas
+val FondoFH = Color(0xFFF4F4F4)
+val GrisFH = Color(0xFF666666)
+val GrisClaroFH = Color(0xFFE7E7E7)
+val RojoFH = Color(0xFFB00020)
 
-// La actividad es el punto de entrada de la app
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge() // la app ocupa toda la pantalla, también detrás de las barras del sistema
+
+        enableEdgeToEdge()
+
         setContent {
-            // Define el esquema de colores de toda la app
             MaterialTheme(
                 colorScheme = lightColorScheme(
                     primary = NaranjaFH,
@@ -66,51 +61,93 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Decide qué pantalla mostrar: login si nadie inició sesión, o la app principal
+// Una pestaña de la barra inferior: título, símbolo y la pantalla que muestra.
+// Qué pestañas existen depende del rol (ver pestanasPara), así que cada rol
+// solo ve las herramientas que le corresponden.
+private data class PestanaNav(
+    val titulo: String,
+    val icono: String,
+    val subtitulo: String,
+    val contenido: @Composable () -> Unit
+)
+
 @Composable
-fun CanchaApp(vm: CanchaViewModel = viewModel()) {
-    if (vm.usuarioLogueado == null) {
-        LoginPantalla(vm)
-    } else {
-        Principal(vm)
-    }
+private fun pestanasPara(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit,
+    abrir: (Int) -> Unit
+): List<PestanaNav> = when (vm.rol) {
+    Rol.JUGADOR -> listOf(
+        PestanaNav("Inicio", "◉", "Todo listo para jugar") { Inicio(vm, abrir) },
+        PestanaNav("Fichas", "＋", "Tu revisión, sin filas") { FichasJugador(vm, avisar) },
+        PestanaNav("Equipos", "▤", "Equipos y jugadores") { Equipos(vm) },
+        PestanaNav("Torneo", "☆", "El torneo en tus manos") { Torneos(vm, avisar) }
+    )
+
+    Rol.MEDICO -> listOf(
+        PestanaNav("Inicio", "◉", "Todo listo para atender") { Inicio(vm, abrir) },
+        PestanaNav("Agenda", "⚕", "Atiende tus citas del día") { AgendaMedico(vm) }
+    )
+
+    Rol.ARBITRO -> listOf(
+        PestanaNav("Inicio", "◉", "Todo listo para dirigir") { Inicio(vm, abrir) },
+        PestanaNav("Partidos", "⚑", "Resultados y tarjetas") { PartidosArbitro(vm, avisar) }
+    )
+
+    Rol.ORGANIZADOR -> listOf(
+        PestanaNav("Inicio", "◉", "El torneo en tus manos") { Inicio(vm, abrir) },
+        PestanaNav("Equipos", "▤", "Agrega o elimina equipos") { EquiposAdmin(vm, avisar) },
+        PestanaNav("Torneo", "☆", "Formato, fixture y tabla") { Torneos(vm, avisar) }
+    )
 }
 
-// ---------- PANTALLA PRINCIPAL ----------
-// Tiene la cabecera negra, el contenido de la pestaña elegida y la barra de abajo
 @Composable
-private fun Principal(vm: CanchaViewModel) {
-    // Snackbar = el mensajito que aparece abajo (ej. "Resultado guardado")
-    val snack = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    // avisar() muestra un mensaje en el snackbar. Se pasa a las pantallas que lo necesitan.
-    val avisar: (String) -> Unit = { mensaje ->
-        scope.launch { snack.showSnackbar(mensaje) }
+fun CanchaApp(vm: CanchaViewModel = viewModel()) {
+
+    val snack = remember {
+        SnackbarHostState()
     }
 
-    // Pestaña actual: 0 Inicio, 1 Fichas, 2 Equipos, 3 Torneo
-    var pagina by rememberSaveable { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
 
-    val menu = listOf("Inicio", "Fichas", "Equipos", "Torneo")
-    val iconos = listOf("◉", "＋", "▤", "☆")
-    // Título grande de la cabecera para cada pestaña
-    val titulos = listOf(
-        "Todo listo para jugar",
-        "Tu revisión, sin filas",
-        "Equipos y jugadores",
-        "El torneo en tus manos"
-    )
+    val avisar: (String) -> Unit = { mensaje ->
+        scope.launch {
+            snack.showSnackbar(mensaje)
+        }
+        Unit
+    }
+
+    // SI NO HAY SESIÓN INICIADA, MOSTRAR PANTALLA DE LOGIN
+    if (vm.usuarioLogueado == null) {
+        LoginPantalla(vm, avisar)
+        return
+    }
+
+    // La pestaña activa se reinicia a "Inicio" cada vez que cambia el rol
+    // (por ejemplo al cerrar sesión y entrar con otra cuenta), para no
+    // quedar apuntando a un índice que ese rol ya no tiene.
+    var pagina by rememberSaveable(vm.rol) {
+        mutableIntStateOf(0)
+    }
+
+    val tabs = pestanasPara(vm, avisar) { pagina = it }
+    val paginaActual = pagina.coerceIn(0, tabs.lastIndex)
 
     Scaffold(
         containerColor = FondoFH,
-        snackbarHost = { SnackbarHost(snack) },
-        // Barra de navegación negra de abajo
+        snackbarHost = {
+            SnackbarHost(snack)
+        },
         bottomBar = {
-            NavigationBar(containerColor = NegroFH) {
-                menu.forEachIndexed { i, nombre ->
+            NavigationBar(
+                containerColor = NegroFH
+            ) {
+                tabs.forEachIndexed { i, tab ->
                     NavigationBarItem(
-                        selected = pagina == i,
-                        onClick = { pagina = i },
+                        selected = paginaActual == i,
+                        onClick = {
+                            pagina = i
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = NegroFH,
                             selectedTextColor = NaranjaFH,
@@ -118,19 +155,25 @@ private fun Principal(vm: CanchaViewModel) {
                             unselectedIconColor = BlancoFH,
                             unselectedTextColor = BlancoFH
                         ),
-                        icon = { Text(iconos[i], fontSize = 23.sp) },
-                        label = { Text(nombre) }
+                        icon = {
+                            Text(tab.icono, fontSize = 23.sp)
+                        },
+                        label = {
+                            Text(tab.titulo)
+                        }
                     )
                 }
             }
         }
     ) { padding ->
+
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Cabecera negra: logo, botón de cerrar sesión y título de la pestaña
+
+            // CABECERA NEGRA
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -142,57 +185,101 @@ private fun Principal(vm: CanchaViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("FUTHUB", color = NaranjaFH, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    TextButton(onClick = { vm.cerrarSesion() }) {
+                    Column {
+                        Text(
+                            "FUTHUB",
+                            color = NaranjaFH,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            vm.rol.titulo,
+                            color = Color(0xFFBBBBBB),
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    TextButton(
+                        onClick = { vm.cerrarSesion() }
+                    ) {
                         Text("Cerrar sesión", color = BlancoFH, fontSize = 12.sp)
                     }
                 }
-                Text(titulos[pagina], color = BlancoFH, fontSize = 25.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Text("Fútbol organizado. Simple y rápido.", color = Color(0xFFBBBBBB), fontSize = 12.sp)
+
+                Text(
+                    tabs[paginaActual].subtitulo,
+                    color = BlancoFH,
+                    fontSize = 25.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(
+                    Modifier.height(8.dp)
+                )
+
+                Text(
+                    "Fútbol organizado. Simple y rápido.",
+                    color = Color(0xFFBBBBBB),
+                    fontSize = 12.sp
+                )
             }
 
-            // Contenido de la pestaña elegida (con scroll vertical).
-            // weight(1f) hace que ocupe todo el espacio que sobra.
             Column(
                 Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    .verticalScroll(
+                        rememberScrollState()
+                    )
+                    .padding(horizontal = 20.dp)
+                    .padding(top = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                when (pagina) {
-                    0 -> Inicio(vm) { pagina = it } // el botón de Inicio puede cambiar de pestaña
-                    1 -> Fichas(vm, avisar)
-                    2 -> Equipos(vm)
-                    3 -> Torneos(vm, avisar)
-                }
+                tabs[paginaActual].contenido()
+
+                Spacer(
+                    Modifier.height(16.dp)
+                )
             }
         }
     }
 }
 
-// ---------- COMPONENTES REUTILIZABLES ----------
-
-// Título con un texto de detalle opcional abajo
 @Composable
-private fun Titulo(texto: String, detalle: String? = null) {
+private fun Titulo(
+    texto: String,
+    detalle: String? = null
+) {
     Column {
-        Text(texto, fontSize = 21.sp, fontWeight = FontWeight.Bold, color = NegroFH)
+        Text(
+            texto,
+            fontSize = 21.sp,
+            fontWeight = FontWeight.Bold,
+            color = NegroFH
+        )
+
         if (detalle != null) {
-            Text(detalle, color = GrisFH, fontSize = 13.sp)
+            Text(
+                detalle,
+                color = GrisFH,
+                fontSize = 13.sp
+            )
         }
     }
 }
 
-// Tarjeta blanca con esquinas redondeadas y sombra, donde va el contenido
 @Composable
-private fun Panel(content: @Composable ColumnScope.() -> Unit) {
+private fun Panel(
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = BlancoFH),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = BlancoFH
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 3.dp
+        )
     ) {
         Column(
             Modifier.padding(18.dp),
@@ -202,30 +289,67 @@ private fun Panel(content: @Composable ColumnScope.() -> Unit) {
     }
 }
 
-// Etiqueta pequeña de estado: naranja claro si es positivo, gris si no
 @Composable
-private fun Estado(texto: String, positivo: Boolean = true) {
+private fun Estado(
+    texto: String,
+    positivo: Boolean = true
+) {
     Text(
         texto,
         modifier = Modifier
             .background(
-                if (positivo) NaranjaClaroFH else GrisClaroFH,
+                if (positivo)
+                    NaranjaClaroFH
+                else
+                    GrisClaroFH,
                 RoundedCornerShape(8.dp)
             )
-            .padding(horizontal = 10.dp, vertical = 5.dp),
+            .padding(
+                horizontal = 10.dp,
+                vertical = 5.dp
+            ),
         color = NegroFH,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold
     )
 }
 
-// ---------- INICIO ----------
-// "abrir" es una función para cambiar a otra pestaña (se usa en los botones)
+// Pantalla de inicio: el mensaje y el botón principal cambian según el rol,
+// cada quien ve la acción que más usa (reservar, atender, dirigir o
+// configurar) en vez de una pantalla genérica para todos.
 @Composable
-private fun Inicio(vm: CanchaViewModel, abrir: (Int) -> Unit) {
-    Titulo("Hola, ${vm.usuarioLogueado?.nombre}", "Copa local · La Paz, Bolivia")
+private fun Inicio(
+    vm: CanchaViewModel,
+    abrir: (Int) -> Unit
+) {
+    Titulo(
+        "Hola, ${vm.usuarioLogueado?.nombre ?: ""}",
+        "Copa local · La Paz, Bolivia"
+    )
 
-    // Tarjeta de bienvenida
+    val (mensaje, textoBoton, destino) = when (vm.rol) {
+        Rol.JUGADOR -> Triple(
+            "Reserva tu revisión y consulta tu habilitación para el torneo.",
+            "Reservar ficha médica",
+            1
+        )
+        Rol.MEDICO -> Triple(
+            "Revisa las solicitudes de los jugadores y decide quién queda habilitado.",
+            "Ver agenda del día",
+            1
+        )
+        Rol.ARBITRO -> Triple(
+            "Carga resultados y registra tarjetas de tus partidos.",
+            "Ver partidos",
+            1
+        )
+        Rol.ORGANIZADOR -> Triple(
+            "Arma los equipos, elige el formato y controla el torneo de principio a fin.",
+            "Configurar torneo",
+            2
+        )
+    }
+
     Panel {
         Text(
             "EL PARTIDO EMPIEZA ANTES DE LA CANCHA",
@@ -233,6 +357,7 @@ private fun Inicio(vm: CanchaViewModel, abrir: (Int) -> Unit) {
             color = GrisFH,
             fontWeight = FontWeight.Bold
         )
+
         Text(
             "Menos filas.\nMás fútbol.",
             fontSize = 32.sp,
@@ -240,124 +365,169 @@ private fun Inicio(vm: CanchaViewModel, abrir: (Int) -> Unit) {
             fontWeight = FontWeight.Bold,
             color = NegroFH
         )
-        Text("Reserva tu revisión y consulta tu habilitación para el torneo.")
-        Button(onClick = { abrir(1) }, modifier = Modifier.fillMaxWidth()) {
-            Text("Reservar ficha médica", fontWeight = FontWeight.Bold)
+
+        Text(mensaje)
+
+        Button(
+            onClick = { abrir(destino) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                textoBoton,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 
-    // Dos tarjetas con números: equipos inscritos y jugadores habilitados
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Card(Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = NaranjaFH)) {
-            Column(Modifier.padding(16.dp)) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Card(
+            Modifier.weight(1f),
+            colors = CardDefaults.cardColors(
+                containerColor = NaranjaFH
+            )
+        ) {
+            Column(
+                Modifier.padding(16.dp)
+            ) {
                 Text(
                     "${vm.torneo.equipoIds.size}",
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
                     color = NegroFH
                 )
-                Text("Equipos inscritos", color = NegroFH)
+
+                Text(
+                    "Equipos inscritos",
+                    color = NegroFH
+                )
             }
         }
 
-        Card(Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = NegroFH)) {
-            Column(Modifier.padding(16.dp)) {
-                // Cuenta los jugadores de equipos inscritos que ya están habilitados
-                val habilitados = vm.jugadores.count {
-                    it.equipoId in vm.torneo.equipoIds && vm.habilitado(it.id)
+        Card(
+            Modifier.weight(1f),
+            colors = CardDefaults.cardColors(
+                containerColor = NegroFH
+            )
+        ) {
+            Column(
+                Modifier.padding(16.dp)
+            ) {
+                Text(
+                    "${
+                        vm.jugadores.count {
+                            it.equipoId in vm.torneo.equipoIds &&
+                                    vm.habilitado(it.id)
+                        }
+                    }",
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NaranjaFH
+                )
+
+                Text(
+                    "Habilitados",
+                    color = BlancoFH
+                )
+            }
+        }
+    }
+
+    // El resumen del torneo solo tiene sentido para quien tiene pestaña de
+    // Torneo (jugador y organizador); médico y árbitro no la necesitan aquí.
+    if (vm.rol == Rol.JUGADOR || vm.rol == Rol.ORGANIZADOR) {
+        Panel {
+            Titulo(
+                vm.torneo.nombre,
+                vm.torneo.formato.titulo
+            )
+
+            Text(
+                "${vm.partidos.size} partidos en el fixture"
+            )
+
+            OutlinedButton(
+                onClick = { abrir(if (vm.rol == Rol.ORGANIZADOR) 2 else 3) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Ver torneo")
+            }
+
+            if (vm.rol == Rol.JUGADOR) {
+                TextButton(
+                    onClick = { abrir(2) }
+                ) {
+                    Text("Consultar jugadores por equipo →")
                 }
-                Text("$habilitados", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = NaranjaFH)
-                Text("Habilitados", color = BlancoFH)
             }
         }
     }
-
-    // Resumen del torneo con accesos rápidos
-    Panel {
-        Titulo(vm.torneo.nombre, "Todos contra todos")
-        Text("${vm.partidos.size} partidos en el fixture")
-        OutlinedButton(onClick = { abrir(3) }, modifier = Modifier.fillMaxWidth()) {
-            Text("Ver torneo")
-        }
-        TextButton(onClick = { abrir(2) }) {
-            Text("Consultar jugadores por equipo →")
-        }
-    }
 }
 
-// ---------- FICHAS MÉDICAS ----------
-// Cada rol ve algo distinto en esta pestaña
+// --- JUGADOR: reservar ficha médica y ver el estado de sus solicitudes ---
 @Composable
-private fun Fichas(vm: CanchaViewModel, avisar: (String) -> Unit) {
-    when (vm.rol) {
-        // El jugador reserva y ve sus propias fichas
-        Rol.JUGADOR -> {
-            ReservaFicha(vm, avisar)
-            Titulo("Mis fichas")
-            ListaFichas(vm)
-        }
-
-        // El médico ve las solicitudes de todos
-        Rol.MEDICO -> {
-            Titulo("Solicitudes médicas")
-            ListaFichas(vm)
-        }
-
-        // Árbitro y organizador no usan esta pestaña
-        else -> Panel {
-            Titulo("Agenda médica")
-            Text("Las fichas médicas las gestionan el jugador y el médico.")
-        }
-    }
-}
-
-// Formulario para que el jugador elija un horario y solicite su ficha
-@Composable
-private fun ReservaFicha(vm: CanchaViewModel, avisar: (String) -> Unit) {
-    // Horario elegido (-1 = ninguno todavía)
-    var horarioId by rememberSaveable { mutableIntStateOf(-1) }
-    val habilitado = vm.habilitado(vm.jugadorActualId)
-
+private fun FichasJugador(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit
+) {
     Titulo(
         "Reserva una ficha",
         "Jugador: ${vm.jugador(vm.jugadorActualId).nombre} · ${vm.torneo.nombre}"
     )
 
-    Estado(if (habilitado) "Habilitado para jugar" else "Aún no habilitado", habilitado)
+    Estado(
+        if (vm.habilitado(vm.jugadorActualId)) "Habilitado para jugar" else "Aún no habilitado",
+        vm.habilitado(vm.jugadorActualId)
+    )
+
+    var horarioId by rememberSaveable {
+        mutableIntStateOf(-1)
+    }
 
     Panel {
-        Text("Dra. Ana Rojas", fontWeight = FontWeight.Bold)
-        Text("Revisión presencial · Centro médico de la asociación", fontSize = 13.sp)
+        Text(
+            "Dra. Ana Rojas",
+            fontWeight = FontWeight.Bold
+        )
 
-        // Se agrupan los horarios por fecha y cada fecha muestra sus horas como botones
-        vm.horarios.groupBy { it.fecha }.forEach { (fecha, horas) ->
-            Text(fecha, fontWeight = FontWeight.SemiBold)
-            Row(
-                Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                horas.forEach { h ->
-                    FilterChip(
-                        selected = horarioId == h.id,
-                        onClick = { horarioId = h.id },
-                        enabled = vm.disponible(h.id), // si ya está reservado, se desactiva
-                        label = { Text(h.hora) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = NaranjaFH,
-                            selectedLabelColor = NegroFH
+        Text(
+            "Revisión presencial · Centro médico de la asociación",
+            fontSize = 13.sp
+        )
+
+        vm.horarios
+            .groupBy { it.fecha }
+            .forEach { (fecha, horarios) ->
+                Text(
+                    fecha,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    horarios.forEach { h ->
+                        FilterChip(
+                            selected = horarioId == h.id,
+                            onClick = { horarioId = h.id },
+                            enabled = vm.disponible(h.id),
+                            label = { Text(h.hora) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = NaranjaFH,
+                                selectedLabelColor = NegroFH
+                            )
                         )
-                    )
+                    }
                 }
             }
-        }
 
-        // El botón solo funciona si hay un horario elegido, está libre y el jugador aún no es apto
         Button(
-            onClick = {
-                avisar(vm.reservar(horarioId))
-                horarioId = -1
-            },
-            enabled = horarioId != -1 && vm.disponible(horarioId) && !habilitado,
+            onClick = { avisar(vm.reservar(horarioId)) },
+            enabled = horarioId != -1 &&
+                    vm.disponible(horarioId) &&
+                    !vm.habilitado(vm.jugadorActualId),
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Solicitar ficha")
@@ -369,21 +539,55 @@ private fun ReservaFicha(vm: CanchaViewModel, avisar: (String) -> Unit) {
             color = GrisFH
         )
     }
+
+    Titulo("Mis fichas")
+
+    val misFichas = vm.fichas.filter { it.jugadorId == vm.jugadorActualId }
+
+    if (misFichas.isEmpty()) {
+        Panel {
+            Text("Todavía no hay solicitudes. Elige un horario arriba.")
+        }
+        return
+    }
+
+    misFichas.reversed().forEach { ficha ->
+        val horario = vm.horarios.first { it.id == ficha.horarioId }
+
+        Panel {
+            Text(
+                "Ficha #${ficha.id}",
+                fontWeight = FontWeight.Bold
+            )
+
+            Text("${horario.fecha} · ${horario.hora}")
+
+            Estado(
+                ficha.estado.name,
+                ficha.estado in listOf(EstadoFicha.ACEPTADA, EstadoFicha.ATENDIDA, EstadoFicha.APTO)
+            )
+        }
+    }
 }
 
-// Lista de fichas: el médico ve todas, el jugador solo las suyas
+// --- MÉDICO: aceptar/rechazar solicitudes y marcar apto/no apto ---
 @Composable
-private fun ListaFichas(vm: CanchaViewModel) {
-    val visibles = vm.fichas.filter {
-        vm.rol == Rol.MEDICO || it.jugadorId == vm.jugadorActualId
+private fun AgendaMedico(
+    vm: CanchaViewModel
+) {
+    Titulo(
+        "Solicitudes médicas",
+        "Fichas de revisión de todos los jugadores"
+    )
+
+    if (vm.fichas.isEmpty()) {
+        Panel {
+            Text("Todavía no hay solicitudes de los jugadores.")
+        }
+        return
     }
 
-    if (visibles.isEmpty()) {
-        Panel { Text("Todavía no hay solicitudes.") }
-    }
-
-    // reversed() para mostrar primero las más recientes
-    visibles.reversed().forEach { ficha ->
+    vm.fichas.reversed().forEach { ficha ->
         val horario = vm.horarios.first { it.id == ficha.horarioId }
 
         Panel {
@@ -391,32 +595,42 @@ private fun ListaFichas(vm: CanchaViewModel) {
                 "Ficha #${ficha.id} · ${vm.jugador(ficha.jugadorId).nombre}",
                 fontWeight = FontWeight.Bold
             )
+
             Text("${horario.fecha} · ${horario.hora}")
+
             Estado(
                 ficha.estado.name,
-                ficha.estado == EstadoFicha.ACEPTADA || ficha.estado == EstadoFicha.APTO
+                ficha.estado in listOf(EstadoFicha.ACEPTADA, EstadoFicha.ATENDIDA, EstadoFicha.APTO)
             )
 
-            // El médico acepta o rechaza las solicitudes pendientes
-            if (vm.rol == Rol.MEDICO && ficha.estado == EstadoFicha.PENDIENTE) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { vm.cambiarEstado(ficha, EstadoFicha.ACEPTADA) }) {
+            if (ficha.estado == EstadoFicha.PENDIENTE) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(onClick = { vm.responder(ficha.id, true) }) {
                         Text("Aceptar")
                     }
-                    OutlinedButton(onClick = { vm.cambiarEstado(ficha, EstadoFicha.RECHAZADA) }) {
+
+                    OutlinedButton(onClick = { vm.responder(ficha.id, false) }) {
                         Text("Rechazar")
                     }
                 }
             }
 
-            // Después de la revisión presencial, el médico marca si el jugador es apto
-            if (vm.rol == Rol.MEDICO && ficha.estado == EstadoFicha.ACEPTADA) {
-                Text("Después de la revisión presencial:", fontSize = 13.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { vm.cambiarEstado(ficha, EstadoFicha.APTO) }) {
+            if (ficha.estado == EstadoFicha.ACEPTADA) {
+                Text(
+                    "Después de la revisión presencial:",
+                    fontSize = 13.sp
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(onClick = { vm.evaluar(ficha.id, true) }) {
                         Text("Apto")
                     }
-                    OutlinedButton(onClick = { vm.cambiarEstado(ficha, EstadoFicha.NO_APTO) }) {
+
+                    OutlinedButton(onClick = { vm.evaluar(ficha.id, false) }) {
                         Text("No apto")
                     }
                 }
@@ -425,16 +639,24 @@ private fun ListaFichas(vm: CanchaViewModel) {
     }
 }
 
-// ---------- EQUIPOS ----------
-// Muestra los jugadores de un equipo y si están habilitados
+// --- Lectura de planteles (jugador: solo consulta, no puede editar) ---
 @Composable
-private fun Equipos(vm: CanchaViewModel) {
-    var equipoId by rememberSaveable { mutableIntStateOf(1) }          // equipo seleccionado
-    var soloHabilitados by rememberSaveable { mutableStateOf(false) }  // filtro del checkbox
+private fun Equipos(
+    vm: CanchaViewModel
+) {
+    var equipoId by rememberSaveable {
+        mutableIntStateOf(1)
+    }
 
-    Titulo("Planteles", "Habilitación para ${vm.torneo.nombre}")
+    var soloHabilitados by rememberSaveable {
+        mutableStateOf(false)
+    }
 
-    // Una etiqueta por equipo para elegir cuál ver
+    Titulo(
+        "Planteles",
+        "Habilitación para ${vm.torneo.nombre}"
+    )
+
     Row(
         Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -455,15 +677,22 @@ private fun Equipos(vm: CanchaViewModel) {
     Panel {
         Titulo(vm.equipo(equipoId).nombre)
 
-        val inscrito = equipoId in vm.torneo.equipoIds
-        Estado(if (inscrito) "Equipo inscrito" else "No inscrito en este torneo", inscrito)
+        Estado(
+            if (equipoId in vm.torneo.equipoIds) "Equipo inscrito" else "No inscrito en este torneo",
+            equipoId in vm.torneo.equipoIds
+        )
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = soloHabilitados, onCheckedChange = { soloHabilitados = it })
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = soloHabilitados,
+                onCheckedChange = { soloHabilitados = it }
+            )
+
             Text("Mostrar solo habilitados")
         }
 
-        // Jugadores del equipo; si el checkbox está marcado, solo los habilitados
         val lista = vm.jugadores.filter {
             it.equipoId == equipoId && (!soloHabilitados || vm.habilitado(it.id))
         }
@@ -474,11 +703,12 @@ private fun Equipos(vm: CanchaViewModel) {
 
         lista.forEach { jugador ->
             HorizontalDivider(color = GrisClaroFH)
-            // padStart(2, '0') muestra el dorsal con dos dígitos (ej. 07)
+
             Text(
                 "${jugador.dorsal.toString().padStart(2, '0')}   ${jugador.nombre}",
                 fontWeight = FontWeight.Bold
             )
+
             Estado(
                 if (vm.habilitado(jugador.id)) "Habilitado" else "No habilitado",
                 vm.habilitado(jugador.id)
@@ -493,58 +723,330 @@ private fun Equipos(vm: CanchaViewModel) {
     )
 }
 
-// ---------- TORNEO ----------
+// --- ORGANIZADOR: alta y baja de equipos del padrón general ---
 @Composable
-private fun Torneos(vm: CanchaViewModel, avisar: (String) -> Unit) {
-    // Partido al que se le está cargando el resultado (null = ningún diálogo abierto)
+private fun EquiposAdmin(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit
+) {
+    var nombreNuevo by rememberSaveable { mutableStateOf("") }
+    var siglaNueva by rememberSaveable { mutableStateOf("") }
+
+    Titulo(
+        "Equipos",
+        "Agrega o elimina equipos del padrón general"
+    )
+
+    Panel {
+        Text("Agregar equipo", fontWeight = FontWeight.Bold)
+
+        OutlinedTextField(
+            value = nombreNuevo,
+            onValueChange = { nombreNuevo = it },
+            label = { Text("Nombre") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = siglaNueva,
+            onValueChange = { siglaNueva = it },
+            label = { Text("Sigla") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Button(
+            onClick = {
+                if (nombreNuevo.isBlank() || siglaNueva.isBlank()) {
+                    avisar("Completa nombre y sigla")
+                } else {
+                    vm.agregarEquipo(nombreNuevo.trim(), siglaNueva.trim())
+                    nombreNuevo = ""
+                    siglaNueva = ""
+                    avisar("Equipo agregado")
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Agregar equipo")
+        }
+    }
+
+    if (vm.equipos.isEmpty()) {
+        Panel {
+            Text("No hay equipos registrados.")
+        }
+        return
+    }
+
+    var equipoId by rememberSaveable { mutableIntStateOf(vm.equipos.first().id) }
+    if (vm.equipos.none { it.id == equipoId }) {
+        equipoId = vm.equipos.first().id
+    }
+
+    Row(
+        Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        vm.equipos.forEach { equipo ->
+            FilterChip(
+                selected = equipoId == equipo.id,
+                onClick = { equipoId = equipo.id },
+                label = { Text(equipo.sigla) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = NaranjaFH,
+                    selectedLabelColor = NegroFH
+                )
+            )
+        }
+    }
+
+    val equipoActual = vm.equipo(equipoId)
+
+    Panel {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Titulo(equipoActual.nombre)
+
+            TextButton(
+                onClick = {
+                    vm.eliminarEquipo(equipoActual.id)
+                    avisar("Equipo eliminado")
+                }
+            ) {
+                Text("Eliminar", color = RojoFH)
+            }
+        }
+
+        Estado(
+            if (equipoId in vm.torneo.equipoIds) "Inscrito en ${vm.torneo.nombre}" else "No inscrito en este torneo",
+            equipoId in vm.torneo.equipoIds
+        )
+
+        vm.jugadores.filter { it.equipoId == equipoId }.forEach { jugador ->
+            HorizontalDivider(color = GrisClaroFH)
+
+            Text(
+                "${jugador.dorsal.toString().padStart(2, '0')}   ${jugador.nombre}",
+                fontWeight = FontWeight.Bold
+            )
+
+            Estado(
+                if (vm.habilitado(jugador.id)) "Habilitado" else "No habilitado",
+                vm.habilitado(jugador.id)
+            )
+        }
+    }
+
+    Text(
+        "Para elegir qué equipos juegan este torneo y el formato, entra a Torneo → Configurar.",
+        fontSize = 12.sp,
+        color = GrisFH
+    )
+}
+
+// --- ÁRBITRO: cargar resultado y registrar tarjetas por partido ---
+@Composable
+private fun PartidosArbitro(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit
+) {
     var resultado by remember { mutableStateOf<Partido?>(null) }
+    var tarjetaPartido by remember { mutableStateOf<Partido?>(null) }
 
-    Titulo(vm.torneo.nombre, "Todos contra todos")
+    Titulo(
+        "Partidos",
+        "${vm.torneo.nombre} · resultados y tarjetas"
+    )
 
-    // Resumen del torneo y botón para generar el fixture
+    if (vm.partidos.isEmpty()) {
+        Panel {
+            Text("Todavía no hay partidos programados por el organizador.")
+        }
+        return
+    }
+
+    vm.partidos.groupBy { it.ronda }.forEach { (ronda, partidos) ->
+        Titulo(if (vm.torneo.formato == Formato.LIGA) "Fecha $ronda" else "Ronda $ronda")
+
+        partidos.forEach { partido ->
+            Panel {
+                Text(
+                    "${vm.equipo(partido.localId).nombre}  vs  ${partido.visitanteId?.let { vm.equipo(it).nombre } ?: "Pase libre"}",
+                    fontWeight = FontWeight.Bold
+                )
+
+                when {
+                    partido.visitanteId == null -> Estado("Clasifica automáticamente")
+                    partido.finalizado() -> Text(
+                        "${partido.golesLocal} — ${partido.golesVisitante}",
+                        fontSize = 27.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NaranjaFH
+                    )
+                    else -> Estado("Pendiente", false)
+                }
+
+                val tarjetasPartido = vm.tarjetasDe(partido.id)
+                tarjetasPartido.forEach { t ->
+                    Text(
+                        "${if (t.tipo == TipoTarjeta.ROJA) "🟥" else "🟨"} ${vm.jugador(t.jugadorId).nombre} · min ${t.minuto}",
+                        fontSize = 12.sp
+                    )
+                }
+
+                if (partido.visitanteId != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(onClick = { resultado = partido }) {
+                            Text(if (partido.finalizado()) "Modificar resultado" else "Cargar resultado")
+                        }
+
+                        OutlinedButton(onClick = { tarjetaPartido = partido }) {
+                            Text("Tarjeta")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    resultado?.let { p ->
+        ResultadoDialogo(
+            vm = vm,
+            partido = p,
+            cerrar = { resultado = null },
+            alGuardar = { gl, gv, penal ->
+                vm.registrarResultado(p.id, gl, gv, penal)
+                avisar("Resultado guardado")
+            }
+        )
+    }
+
+    tarjetaPartido?.let { p ->
+        TarjetaDialogo(
+            vm = vm,
+            partido = p,
+            cerrar = { tarjetaPartido = null },
+            alGuardar = { jugadorId, tipo, minuto ->
+                vm.agregarTarjeta(p.id, jugadorId, tipo, minuto)
+                avisar("Tarjeta registrada")
+            }
+        )
+    }
+}
+
+// --- ORGANIZADOR: formato del torneo, fixture y tabla; también visible
+// (en modo lectura) para el jugador ---
+@Composable
+private fun Torneos(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit
+) {
+    var editando by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var resultado by remember {
+        mutableStateOf<Partido?>(null)
+    }
+
+    if (editando) {
+        Configurar(
+            vm,
+            cerrar = { editando = false },
+            avisar = avisar
+        )
+        return
+    }
+
+    Titulo(
+        vm.torneo.nombre,
+        vm.torneo.formato.titulo
+    )
+
     Panel {
         Text(
             "${vm.torneo.equipoIds.size} equipos · ${vm.partidos.size} partidos",
             fontWeight = FontWeight.Bold
         )
-        // Siglas de los equipos separadas por "·"
+
         Text(
             vm.torneo.equipoIds.joinToString(" · ") { vm.equipo(it).sigla },
             fontSize = 13.sp
         )
 
-        // Solo si aún no hay partidos: el organizador puede generarlos
-        if (vm.partidos.isEmpty()) {
-            if (vm.rol == Rol.ORGANIZADOR) {
-                Button(onClick = { avisar(vm.generar()) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Sortear y generar fixture")
-                }
-            } else {
-                Text("El organizador debe generar los partidos.", fontSize = 13.sp)
+        if (vm.rol == Rol.ORGANIZADOR && vm.partidos.isEmpty()) {
+            OutlinedButton(
+                onClick = { editando = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Configurar torneo y equipos")
             }
+
+            Button(
+                onClick = { avisar(vm.generar(true)) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Sortear y generar fixture")
+            }
+
+            TextButton(
+                onClick = { avisar(vm.generar(false)) }
+            ) {
+                Text("Generar con el orden elegido")
+            }
+        }
+
+        if (vm.partidos.isEmpty()) {
+            Text(
+                "El organizador debe generar los partidos.",
+                fontSize = 13.sp
+            )
+        }
+
+        if (vm.rol == Rol.ORGANIZADOR && vm.torneo.formato == Formato.ELIMINACION && vm.partidos.isNotEmpty() && vm.campeon() == null) {
+            Button(
+                onClick = { avisar(vm.avanzar()) }
+            ) {
+                Text("Crear siguiente ronda")
+            }
+        }
+
+        vm.campeon()?.let {
+            Text(
+                "★ $it",
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Bold,
+                color = NaranjaFH
+            )
         }
     }
 
-    // Tabla y partidos solo aparecen cuando ya existe el fixture
-    if (vm.partidos.isNotEmpty()) {
+    if (vm.torneo.formato == Formato.LIGA) {
         Panel {
             Titulo("Tabla de posiciones")
 
-            // Encabezado de la tabla (PJ = partidos jugados, DG = diferencia de goles, PTS = puntos)
-            Row(Modifier.fillMaxWidth()) {
-                Text("Equipo", Modifier.weight(1f), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Text("PJ", Modifier.width(40.dp), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Text("DG", Modifier.width(40.dp), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Text("PTS", Modifier.width(36.dp), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-            }
+            Text(
+                "Equipo           PJ    DG    PTS",
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            )
 
-            // Una fila por equipo, ya ordenada por puntos
-            vm.tabla().forEachIndexed { i, p ->
+            MotorTorneo.tabla(vm.torneo, vm.partidos).forEachIndexed { i, p ->
                 Row(Modifier.fillMaxWidth()) {
-                    Text("${i + 1}. ${vm.equipo(p.equipoId).sigla}", Modifier.weight(1f))
+                    Text(
+                        "${i + 1}. ${vm.equipo(p.equipoId).sigla}",
+                        Modifier.weight(1f)
+                    )
                     Text("${p.jugados}", Modifier.width(40.dp))
                     Text("${p.diferencia}", Modifier.width(40.dp))
-                    Text("${p.puntos}", Modifier.width(36.dp), fontWeight = FontWeight.Bold)
+                    Text("${p.puntos}", Modifier.width(32.dp), fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -553,32 +1055,53 @@ private fun Torneos(vm: CanchaViewModel, avisar: (String) -> Unit) {
                 fontSize = 11.sp
             )
         }
+    }
 
-        Titulo("Partidos")
+    vm.partidos.groupBy { it.ronda }.forEach { (ronda, partidos) ->
+        val etiqueta = if (vm.torneo.formato == Formato.LIGA) {
+            "Fecha $ronda"
+        } else {
+            when (partidos.size) {
+                1 -> "Final"
+                2 -> "Semifinales"
+                4 -> "Cuartos de final"
+                8 -> "Octavos de final"
+                else -> "Ronda $ronda"
+            }
+        }
 
-        // Una tarjeta por partido
-        vm.partidos.forEach { partido ->
+        Titulo(etiqueta)
+
+        partidos.forEach { partido ->
             Panel {
                 Text(
-                    "${vm.equipo(partido.localId).nombre}  vs  ${vm.equipo(partido.visitanteId).nombre}",
+                    "${vm.equipo(partido.localId).nombre}  vs  ${partido.visitanteId?.let { vm.equipo(it).nombre } ?: "Pase libre"}",
                     fontWeight = FontWeight.Bold
                 )
 
-                // Si ya se jugó muestra el marcador, si no, la etiqueta "Pendiente"
-                if (partido.finalizado()) {
+                if (partido.visitanteId == null) {
+                    Estado("Clasifica automáticamente")
+                } else if (partido.finalizado()) {
                     Text(
                         "${partido.golesLocal} — ${partido.golesVisitante}",
                         fontSize = 27.sp,
                         fontWeight = FontWeight.Bold,
                         color = NaranjaFH
                     )
+
+                    partido.ganadorPenalesId?.let {
+                        Text("Penales: ${vm.equipo(it).nombre}", fontSize = 12.sp)
+                    }
                 } else {
                     Estado("Pendiente", false)
                 }
 
-                // Solo el árbitro y el organizador pueden cargar resultados
-                if (vm.rol == Rol.ARBITRO || vm.rol == Rol.ORGANIZADOR) {
-                    OutlinedButton(onClick = { resultado = partido }) {
+                // Solo el organizador edita resultados desde aquí; el árbitro
+                // lo hace desde su propia pestaña de Partidos.
+                if (vm.rol == Rol.ORGANIZADOR && partido.visitanteId != null) {
+                    OutlinedButton(
+                        onClick = { resultado = partido }
+                    ) {
                         Text(if (partido.finalizado()) "Modificar resultado" else "Cargar resultado")
                     }
                 }
@@ -586,72 +1109,243 @@ private fun Torneos(vm: CanchaViewModel, avisar: (String) -> Unit) {
         }
     }
 
-    // Si hay un partido elegido, se muestra el diálogo para escribir los goles
-    resultado?.let { partido ->
+    resultado?.let { p ->
         ResultadoDialogo(
-            partido = partido,
+            vm = vm,
+            partido = p,
             cerrar = { resultado = null },
-            guardar = { gl, gv ->
-                vm.guardarResultado(partido, gl, gv)
+            alGuardar = { gl, gv, penal ->
+                vm.registrarResultado(p.id, gl, gv, penal)
                 avisar("Resultado guardado")
             }
         )
     }
 }
 
-// Ventana emergente para escribir los goles de local y visitante
+@Composable
+private fun Configurar(
+    vm: CanchaViewModel,
+    cerrar: () -> Unit,
+    avisar: (String) -> Unit
+) {
+    var nombre by rememberSaveable { mutableStateOf(vm.torneo.nombre) }
+    var formato by rememberSaveable { mutableStateOf(vm.torneo.formato) }
+    var ids by rememberSaveable { mutableStateOf(vm.torneo.equipoIds.toList()) }
+
+    Titulo("Configurar torneo", "Organizador")
+
+    Panel {
+        OutlinedTextField(
+            value = nombre,
+            onValueChange = { nombre = it },
+            label = { Text("Nombre del torneo") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Text("Tipo de torneo:", fontWeight = FontWeight.Bold)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Formato.entries.forEach { f ->
+                FilterChip(
+                    selected = formato == f,
+                    onClick = { formato = f },
+                    label = { Text(f.titulo) }
+                )
+            }
+        }
+
+        Text("Equipos participantes:", fontWeight = FontWeight.Bold)
+
+        vm.equipos.forEach { equipo ->
+            val seleccionado = equipo.id in ids
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Checkbox(
+                    checked = seleccionado,
+                    onCheckedChange = { check ->
+                        ids = if (check) {
+                            ids + equipo.id
+                        } else {
+                            ids - equipo.id
+                        }
+                    }
+                )
+                Text(equipo.nombre)
+            }
+        }
+
+        Button(
+            onClick = {
+                if (ids.isEmpty()) {
+                    avisar("Selecciona al menos un equipo")
+                } else {
+                    vm.torneo = Torneo(nombre, formato, ids.toMutableList())
+                    cerrar()
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Guardar cambios")
+        }
+    }
+}
+
 @Composable
 private fun ResultadoDialogo(
+    vm: CanchaViewModel,
     partido: Partido,
     cerrar: () -> Unit,
-    guardar: (Int, Int) -> Unit
+    alGuardar: (Int, Int, Int?) -> Unit
 ) {
-    // Los goles se guardan como texto mientras se escribe; si ya había resultado, se muestra
     var gl by rememberSaveable { mutableStateOf(partido.golesLocal?.toString() ?: "0") }
     var gv by rememberSaveable { mutableStateOf(partido.golesVisitante?.toString() ?: "0") }
+    var penalGanador by rememberSaveable { mutableStateOf(partido.ganadorPenalesId) }
+
+    val empatado = gl.toIntOrNull() != null && gl.toIntOrNull() == gv.toIntOrNull()
+    // Solo en eliminación directa un empate necesita penales: en liga el
+    // empate ya se refleja en la tabla de posiciones tal cual.
+    val necesitaPenales = empatado && vm.torneo.formato == Formato.ELIMINACION && partido.visitanteId != null
 
     AlertDialog(
-        onDismissRequest = cerrar, // tocar fuera de la ventana la cierra
+        onDismissRequest = cerrar,
         title = { Text("Registrar resultado") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = gl,
-                    onValueChange = { gl = it },
+                    onValueChange = { gl = it; penalGanador = null },
                     label = { Text("Goles Local") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 OutlinedTextField(
                     value = gv,
-                    onValueChange = { gv = it },
+                    onValueChange = { gv = it; penalGanador = null },
                     label = { Text("Goles Visitante") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                if (necesitaPenales) {
+                    Text("Empate: define el ganador por penales", fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = penalGanador == partido.localId,
+                            onClick = { penalGanador = partido.localId },
+                            label = { Text(vm.equipo(partido.localId).sigla) }
+                        )
+                        FilterChip(
+                            selected = penalGanador == partido.visitanteId,
+                            onClick = { penalGanador = partido.visitanteId },
+                            label = { Text(vm.equipo(partido.visitanteId!!).sigla) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                enabled = !necesitaPenales || penalGanador != null,
+                onClick = {
+                    val g1 = gl.toIntOrNull() ?: 0
+                    val g2 = gv.toIntOrNull() ?: 0
+                    alGuardar(g1, g2, if (g1 == g2) penalGanador else null)
+                    cerrar()
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = cerrar) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+private fun TarjetaDialogo(
+    vm: CanchaViewModel,
+    partido: Partido,
+    cerrar: () -> Unit,
+    alGuardar: (Int, TipoTarjeta, Int) -> Unit
+) {
+    val jugadoresPartido = vm.jugadores.filter {
+        it.equipoId == partido.localId || it.equipoId == partido.visitanteId
+    }
+
+    var jugadorId by rememberSaveable { mutableIntStateOf(jugadoresPartido.firstOrNull()?.id ?: -1) }
+    var tipo by rememberSaveable { mutableStateOf(TipoTarjeta.AMARILLA) }
+    var minuto by rememberSaveable { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = cerrar,
+        title = { Text("Registrar tarjeta") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Jugador", fontWeight = FontWeight.SemiBold)
+
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    jugadoresPartido.forEach { jugador ->
+                        FilterChip(
+                            selected = jugadorId == jugador.id,
+                            onClick = { jugadorId = jugador.id },
+                            label = { Text(jugador.nombre) }
+                        )
+                    }
+                }
+
+                Text("Tipo", fontWeight = FontWeight.SemiBold)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TipoTarjeta.entries.forEach { t ->
+                        FilterChip(
+                            selected = tipo == t,
+                            onClick = { tipo = t },
+                            label = { Text(t.titulo) }
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = minuto,
+                    onValueChange = { minuto = it },
+                    label = { Text("Minuto") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
         },
         confirmButton = {
-            Button(onClick = {
-                // toIntOrNull convierte el texto a número; si está vacío o inválido usa 0
-                guardar(gl.toIntOrNull() ?: 0, gv.toIntOrNull() ?: 0)
-                cerrar()
-            }) {
+            Button(
+                enabled = jugadorId != -1,
+                onClick = {
+                    alGuardar(jugadorId, tipo, minuto.toIntOrNull() ?: 0)
+                    cerrar()
+                }
+            ) {
                 Text("Guardar")
             }
         },
         dismissButton = {
-            TextButton(onClick = cerrar) { Text("Cancelar") }
+            TextButton(onClick = cerrar) {
+                Text("Cancelar")
+            }
         }
     )
 }
 
-// ---------- LOGIN ----------
 @Composable
-private fun LoginPantalla(vm: CanchaViewModel) {
+private fun LoginPantalla(
+    vm: CanchaViewModel,
+    avisar: (String) -> Unit
+) {
     var correo by rememberSaveable { mutableStateOf("") }
     var clave by rememberSaveable { mutableStateOf("") }
-    var error by rememberSaveable { mutableStateOf("") } // mensaje si el login falla
 
-    // Fondo negro con la tarjeta de login centrada
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -669,8 +1363,19 @@ private fun LoginPantalla(vm: CanchaViewModel) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("FUTHUB", color = NaranjaFH, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-                Text("Iniciar Sesión", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = NegroFH)
+                Text(
+                    "FUTHUB",
+                    color = NaranjaFH,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp
+                )
+
+                Text(
+                    "Iniciar Sesión",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = NegroFH
+                )
 
                 OutlinedTextField(
                     value = correo,
@@ -689,14 +1394,13 @@ private fun LoginPantalla(vm: CanchaViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // El mensaje de error solo se ve si hay uno
-                if (error.isNotEmpty()) {
-                    Text(error, color = Color(0xFFB00020), fontSize = 13.sp)
-                }
-
-                // iniciarSesion devuelve null si salió bien (entonces el error queda vacío)
                 Button(
-                    onClick = { error = vm.iniciarSesion(correo, clave) ?: "" },
+                    onClick = {
+                        val error = vm.iniciarSesion(correo, clave)
+                        if (error != null) {
+                            avisar(error)
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Ingresar", fontWeight = FontWeight.Bold)

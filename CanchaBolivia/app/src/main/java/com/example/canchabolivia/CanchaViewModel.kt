@@ -5,171 +5,218 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 
-// =====================================================
-// CANCHAVIEWMODEL.KT
-// Aquí vive la lógica de la app y los datos que cambian.
-// La pantalla (MainActivity) solo muestra lo que hay aquí
-// y llama a estas funciones cuando el usuario toca un botón.
-// =====================================================
 class CanchaViewModel : ViewModel() {
 
-    // ---------- LOGIN ----------
+    // --- AUTENTICACIÓN Y LOGIN ---
+    var usuarioLogueado by mutableStateOf<Usuario?>(null)
 
-    // Lista de usuarios de prueba (clave "123" para todos).
-    // Juan Pérez tiene jugadorId = 11, que es su jugador en la lista de jugadores.
     val usuarios = listOf(
-        Usuario(1, "Juan Pérez", "jugador@futhub.com", "123", Rol.JUGADOR, jugadorId = 11),
+        Usuario(1, "Juan Pérez", "jugador@futhub.com", "123", Rol.JUGADOR),
         Usuario(2, "Dra. Ana Rojas", "medico@futhub.com", "123", Rol.MEDICO),
         Usuario(3, "Luis Flores", "arbitro@futhub.com", "123", Rol.ARBITRO),
         Usuario(4, "Organización La Paz", "admin@futhub.com", "123", Rol.ORGANIZADOR)
     )
 
-    // Usuario que inició sesión (null = nadie). Con mutableStateOf, cuando cambia
-    // la pantalla se redibuja sola. "private set" evita que la pantalla lo modifique
-    // directamente: solo se cambia con iniciarSesion() y cerrarSesion().
-    var usuarioLogueado by mutableStateOf<Usuario?>(null)
-        private set
-
-    // El rol y el jugador actual salen del usuario que inició sesión
+    // El rol activo siempre viene del usuario que inició sesión: ya no existe
+    // un selector manual, así que cada quien solo ve y usa su propia pantalla.
     val rol: Rol get() = usuarioLogueado?.rol ?: Rol.JUGADOR
-    val jugadorActualId: Int get() = usuarioLogueado?.jugadorId ?: 0
 
-    // Busca un usuario con ese correo y clave.
-    // Devuelve null si todo salió bien, o el mensaje de error si no lo encontró.
     fun iniciarSesion(correo: String, clave: String): String? {
-        val usuario = usuarios.find {
+        val encontrado = usuarios.find {
             it.correo.equals(correo.trim(), ignoreCase = true) && it.clave == clave.trim()
         }
-        usuarioLogueado = usuario
-        return if (usuario == null) "Correo o contraseña incorrectos" else null
+
+        return if (encontrado != null) {
+            usuarioLogueado = encontrado
+            null
+        } else {
+            "Correo o contraseña incorrectos"
+        }
     }
 
-    // Al poner el usuario en null, la app vuelve a la pantalla de login
     fun cerrarSesion() {
         usuarioLogueado = null
     }
 
-    // ---------- DATOS DE EJEMPLO ----------
-
-    val equipos = listOf(
-        Equipo(1, "Bolívar", "BOL"),
-        Equipo(2, "The Strongest", "STR"),
-        Equipo(4, "Wilstermann", "WIL"),
-        Equipo(5, "Oriente Petrolero", "OPE"),
-        Equipo(7, "Nacional Potosí", "NAC"),
-        Equipo(8, "Aurora", "AUR")
+    // --- EQUIPOS (el organizador puede agregar/eliminar) ---
+    var equipos by mutableStateOf(
+        listOf(
+            Equipo(1, "Bolívar", "BOL"),
+            Equipo(2, "The Strongest", "STR"),
+            Equipo(4, "Wilstermann", "WIL"),
+            Equipo(5, "Oriente Petrolero", "OPE"),
+            Equipo(7, "Nacional Potosí", "NAC"),
+            Equipo(8, "Aurora", "AUR")
+        )
     )
 
-    // Se crean 2 jugadores por equipo. El id sale de: id del equipo * 10 + 1 (o + 2).
-    // Ej.: el equipo 1 tiene los jugadores 11 y 12.
-    val jugadores = equipos.flatMap { equipo ->
-        listOf(
-            Jugador(equipo.id * 10 + 1, "Juan Pérez", equipo.id, 10),
-            Jugador(equipo.id * 10 + 2, "Diego ${equipo.sigla}", equipo.id, 7)
+    var jugadores by mutableStateOf(
+        equipos.flatMap { equipo ->
+            listOf(
+                Jugador(equipo.id * 10 + 1, "Juan Pérez", equipo.id, 10),
+                Jugador(equipo.id * 10 + 2, "Diego ${equipo.sigla}", equipo.id, 7)
+            )
+        }
+    )
+
+    val jugadorActualId = 11
+
+    fun agregarEquipo(nombre: String, sigla: String) {
+        val nuevoId = (equipos.maxOfOrNull { it.id } ?: 0) + 1
+        equipos = equipos + Equipo(nuevoId, nombre, sigla.uppercase())
+        jugadores = jugadores + listOf(
+            Jugador(nuevoId * 10 + 1, "Jugador 1", nuevoId, 10),
+            Jugador(nuevoId * 10 + 2, "Jugador 2", nuevoId, 7)
         )
     }
 
-    // Horarios que ofrece la doctora para las revisiones
+    // Borrar un equipo también limpia todo lo que dependía de él (jugadores,
+    // su lugar en el torneo, partidos ya programados, fichas y tarjetas) para
+    // no dejar referencias colgando que después rompan la pantalla.
+    fun eliminarEquipo(equipoId: Int) {
+        val idsJugadoresEliminados = jugadores.filter { it.equipoId == equipoId }.map { it.id }
+
+        equipos = equipos.filterNot { it.id == equipoId }
+        jugadores = jugadores.filterNot { it.equipoId == equipoId }
+        torneo = torneo.copy(equipoIds = (torneo.equipoIds - equipoId).toMutableList())
+        partidos = partidos.filterNot { it.localId == equipoId || it.visitanteId == equipoId }
+        fichas = fichas.filterNot { it.jugadorId in idsJugadoresEliminados }
+        tarjetas = tarjetas.filterNot { it.jugadorId in idsJugadoresEliminados }
+    }
+
+    fun equipo(id: Int): Equipo = equipos.firstOrNull { it.id == id } ?: Equipo(id, "Equipo eliminado", "—")
+    fun jugador(id: Int): Jugador = jugadores.firstOrNull { it.id == id } ?: Jugador(id, "Jugador eliminado", -1, 0)
+
+    // --- FICHAS MÉDICAS ---
     val horarios = listOf(
-        HorarioMedico(1, "2026-05-11", "09:00"),
-        HorarioMedico(2, "2026-05-11", "09:30"),
-        HorarioMedico(3, "2026-05-12", "10:00")
+        HorarioMedico(1, 2, "2026-05-11", "09:00"),
+        HorarioMedico(2, 2, "2026-05-11", "09:30"),
+        HorarioMedico(3, 2, "2026-05-12", "10:00")
     )
 
-    // El torneo con los 4 equipos que participan (ids 1, 2, 4 y 5)
-    val torneo = Torneo("Copa La Paz", listOf(1, 2, 4, 5))
-
-    // ---------- ESTADO QUE CAMBIA ----------
-
-    // Fichas médicas solicitadas. Empieza vacía y crece cuando un jugador reserva.
     var fichas by mutableStateOf(listOf<FichaMedica>())
-        private set
 
-    // Partidos del fixture. Empieza vacía hasta que el organizador la genera.
-    var partidos by mutableStateOf(listOf<Partido>())
-        private set
+    fun disponible(horarioId: Int): Boolean {
+        return fichas.none { it.horarioId == horarioId && it.estado != EstadoFicha.RECHAZADA }
+    }
 
-    // Funciones para buscar un equipo o jugador por su id
-    fun equipo(id: Int) = equipos.first { it.id == id }
-    fun jugador(id: Int) = jugadores.first { it.id == id }
+    fun habilitado(jugadorId: Int): Boolean {
+        return fichas.any { it.jugadorId == jugadorId && it.estado == EstadoFicha.APTO }
+    }
 
-    // ---------- FICHAS MÉDICAS ----------
-
-    // Un horario está disponible si ninguna ficha lo ocupa
-    // (las fichas rechazadas liberan el horario)
-    fun disponible(horarioId: Int) =
-        fichas.none { it.horarioId == horarioId && it.estado != EstadoFicha.RECHAZADA }
-
-    // Un jugador está habilitado si tiene alguna ficha marcada como APTO
-    fun habilitado(jugadorId: Int) =
-        fichas.any { it.jugadorId == jugadorId && it.estado == EstadoFicha.APTO }
-
-    // El jugador reserva un horario: se agrega una ficha nueva (queda PENDIENTE)
     fun reservar(horarioId: Int): String {
-        fichas = fichas + FichaMedica(fichas.size + 1, jugadorActualId, horarioId)
-        return "Solicitud enviada. Espera la aceptación del médico."
+        val nueva = FichaMedica(fichas.size + 1, jugadorActualId, horarioId)
+        fichas = fichas + nueva
+        return "Solicitud enviada correctamente"
     }
 
-    // Cambia el estado de una ficha (aceptar, rechazar, apto, no apto).
-    // Se recorre la lista y solo la ficha elegida se reemplaza por una copia con el estado nuevo.
-    fun cambiarEstado(ficha: FichaMedica, nuevo: EstadoFicha) {
-        fichas = fichas.map { if (it.id == ficha.id) it.copy(estado = nuevo) else it }
-    }
-
-    // ---------- TORNEO ----------
-
-    // Genera el fixture "todos contra todos": cada equipo juega una vez contra cada otro.
-    // Primero se sortea (shuffled) el orden de los equipos.
-    fun generar(): String {
-        val ids = torneo.equipoIds.shuffled()
-        val lista = mutableListOf<Partido>()
-        for (i in ids.indices) {
-            // j empieza en i + 1 para no repetir partidos ni jugar contra uno mismo
-            for (j in i + 1 until ids.size) {
-                lista.add(Partido(lista.size + 1, ids[i], ids[j]))
-            }
+    // Reemplaza la ficha por una copia con el nuevo estado en vez de mutarla
+    // in-place: así la lista cambia de verdad y la pantalla del médico se
+    // actualiza al tocar "Aceptar"/"Rechazar" (antes se quedaba trancada).
+    fun responder(fichaId: Int, aceptar: Boolean) {
+        fichas = fichas.map { ficha ->
+            if (ficha.id == fichaId) {
+                ficha.copy(estado = if (aceptar) EstadoFicha.ACEPTADA else EstadoFicha.RECHAZADA)
+            } else ficha
         }
-        partidos = lista
+    }
+
+    fun evaluar(fichaId: Int, apto: Boolean) {
+        fichas = fichas.map { ficha ->
+            if (ficha.id == fichaId) {
+                ficha.copy(estado = if (apto) EstadoFicha.APTO else EstadoFicha.NO_APTO)
+            } else ficha
+        }
+    }
+
+    // --- TORNEO Y PARTIDOS ---
+    var torneo by mutableStateOf(Torneo("Copa La Paz", Formato.LIGA, mutableListOf(1, 2, 4, 5)))
+    var partidos by mutableStateOf(listOf<Partido>())
+
+    fun generar(sortear: Boolean): String {
+        val ids = if (sortear) torneo.equipoIds.shuffled() else torneo.equipoIds
+
+        partidos = when (torneo.formato) {
+            // Todos contra todos: un partido por cada par de equipos.
+            Formato.LIGA -> {
+                val lista = mutableListOf<Partido>()
+                var pId = 1
+                for (i in ids.indices) {
+                    for (j in i + 1 until ids.size) {
+                        lista.add(Partido(pId++, 1, ids[i], ids[j]))
+                    }
+                }
+                lista
+            }
+            // Eliminación directa: solo se arma la primera ronda, las
+            // siguientes salen de avanzar() con los ganadores reales.
+            Formato.ELIMINACION -> MotorTorneo.siguienteRondaEliminacion(ids, ronda = 1, idInicial = 1)
+        }
+
         return "Fixture generado"
     }
 
-    // Guarda los goles de un partido (reemplaza el partido por una copia con el resultado)
-    fun guardarResultado(partido: Partido, golesLocal: Int, golesVisitante: Int) {
-        partidos = partidos.map {
-            if (it.id == partido.id) it.copy(golesLocal = golesLocal, golesVisitante = golesVisitante) else it
+    // Nunca se muta un Partido existente: siempre se reemplaza por una
+    // copia dentro de la lista (igual que con las fichas médicas).
+    fun registrarResultado(partidoId: Int, golesLocal: Int, golesVisitante: Int, ganadorPenalesId: Int? = null) {
+        partidos = partidos.map { partido ->
+            if (partido.id == partidoId) {
+                partido.copy(golesLocal = golesLocal, golesVisitante = golesVisitante, ganadorPenalesId = ganadorPenalesId)
+            } else partido
         }
     }
 
-    // Calcula la tabla de posiciones a partir de los partidos ya jugados
-    fun tabla(): List<Posicion> {
-        return torneo.equipoIds.map { id ->
-            // Partidos terminados en los que participó este equipo
-            val jugados = partidos.filter {
-                it.finalizado() && (it.localId == id || it.visitanteId == id)
-            }
-            var favor = 0
-            var contra = 0
-            var puntos = 0
+    // Toma los resultados de la última ronda de eliminación directa, saca
+    // a los ganadores y arma la ronda siguiente. Si algún partido de la
+    // última ronda todavía no tiene resultado (o quedó empatado sin
+    // penales), avisa en vez de avanzar con datos incompletos.
+    fun avanzar(): String {
+        if (torneo.formato != Formato.ELIMINACION) return "Esta acción es solo para eliminación directa"
+        if (partidos.isEmpty()) return "Primero genera el fixture"
 
-            for (p in jugados) {
-                // Según jugó de local o de visitante, se elige cuáles son sus goles y cuáles los del rival
-                val propios = if (p.localId == id) p.golesLocal!! else p.golesVisitante!!
-                val rival = if (p.localId == id) p.golesVisitante!! else p.golesLocal!!
-                favor += propios
-                contra += rival
-                // Victoria = 3 puntos, empate = 1, derrota = 0
-                puntos += when {
-                    propios > rival -> 3
-                    propios == rival -> 1
-                    else -> 0
-                }
-            }
-            Posicion(id, jugados.size, favor, favor - contra, puntos)
-        }.sortedWith(
-            // Orden: más puntos primero; si empatan, mayor diferencia de goles; luego goles a favor
-            compareByDescending<Posicion> { it.puntos }
-                .thenByDescending { it.diferencia }
-                .thenByDescending { it.favor }
-        )
+        val ultimaRonda = partidos.maxOf { it.ronda }
+        val partidosUltimaRonda = partidos.filter { it.ronda == ultimaRonda }
+
+        val haySinJugar = partidosUltimaRonda.any { it.visitanteId != null && !it.finalizado() }
+        if (haySinJugar) return "Faltan resultados de la ronda $ultimaRonda"
+
+        val ganadores = partidosUltimaRonda.map {
+            it.ganadorId() ?: return "Hay un empate sin definir por penales en la ronda $ultimaRonda"
+        }
+        if (ganadores.size == 1) return "El torneo ya tiene campeón"
+
+        val idInicial = partidos.maxOf { it.id } + 1
+        partidos = partidos + MotorTorneo.siguienteRondaEliminacion(ganadores, ultimaRonda + 1, idInicial)
+        return "Ronda ${ultimaRonda + 1} generada"
     }
+
+    // Liga: hay campeón cuando se jugaron todos los partidos (el primero
+    // de la tabla). Eliminación: hay campeón cuando la última ronda quedó
+    // en un solo partido ya definido.
+    fun campeon(): String? {
+        if (partidos.isEmpty()) return null
+
+        return when (torneo.formato) {
+            Formato.LIGA -> {
+                if (!partidos.all { it.finalizado() }) return null
+                MotorTorneo.tabla(torneo, partidos).firstOrNull()?.let { equipo(it.equipoId).nombre }
+            }
+            Formato.ELIMINACION -> {
+                val ultimaRonda = partidos.maxOf { it.ronda }
+                val partidosUltimaRonda = partidos.filter { it.ronda == ultimaRonda }
+                if (partidosUltimaRonda.size != 1) return null
+                partidosUltimaRonda.single().ganadorId()?.let { equipo(it).nombre }
+            }
+        }
+    }
+
+    // --- TARJETAS (árbitro) ---ff
+    var tarjetas by mutableStateOf(listOf<Tarjeta>())
+
+    fun agregarTarjeta(partidoId: Int, jugadorId: Int, tipo: TipoTarjeta, minuto: Int) {
+        val nuevaId = (tarjetas.maxOfOrNull { it.id } ?: 0) + 1
+        tarjetas = tarjetas + Tarjeta(nuevaId, partidoId, jugadorId, tipo, minuto)
+    }
+
+    fun tarjetasDe(partidoId: Int): List<Tarjeta> = tarjetas.filter { it.partidoId == partidoId }
 }

@@ -1,0 +1,153 @@
+@startuml
+!pragma layout smetana
+skinparam backgroundColor #F4F7F5
+skinparam classBackgroundColor #FFFFFF
+skinparam classBorderColor #103E35
+skinparam ArrowColor #547C3A
+skinparam defaultFontName SansSerif
+skinparam classFontSize 14
+title Cancha Bolivia — Diagrama de clases
+
+skinparam classAttributeIconSize 0
+hide empty members
+class Usuario {
++id: Int
++nombre: String
++rol: Rol
+}
+class Equipo {
++id: Int
++nombre: String
++sigla: String
+}
+class Jugador {
++id: Int
++nombre: String
++dorsal: Int
++equipoId: Int
+}
+class HorarioMedico {
++id: Int
++medicoId: Int
++fecha: String
++hora: String
+}
+class FichaMedica {
++id: Int
++jugadorId: Int
++horarioId: Int
++torneoId: Int
++estado: EstadoFicha
+}
+class Habilitacion {
++id: Int
++jugadorId: Int
++medicoId: Int
++torneoId: Int
++apto: Boolean
+}
+class Torneo {
++id: Int
++nombre: String
++organizadorId: Int
++formato: Formato
++equipoIds: List<Int>
+}
+class Partido {
++id: Int
++torneoId: Int
++ronda: Int
++localId: Int
++visitanteId: Int?
++arbitroId: Int
++golesLocal: Int?
++golesVisitante: Int?
++ganadorPenalesId: Int?
++finalizado(): Boolean
++ganador(): Int?
+}
+class Posicion {
++equipoId: Int
++jugados: Int
++ganados: Int
++empatados: Int
++perdidos: Int
++golesFavor: Int
++golesContra: Int
++puntos: Int
++diferencia: Int
+}
+class MotorTorneo <<object>> {
++liga(): List<Partido>
++eliminacion(): List<Partido>
++siguienteRonda(): List<Partido>
++tabla(): List<Posicion>
+}
+class CanchaViewModel {
++reservar()
++responder()
++evaluar()
++configurar()
++generar()
++resultado()
++avanzar()
++campeon()
+}
+class MainActivity
+class ViewModel
+class ComponentActivity
+enum Rol {
+JUGADOR
+MEDICO
+ARBITRO
+ORGANIZADOR
+}
+enum EstadoFicha {
+PENDIENTE
+ACEPTADA
+RECHAZADA
+ATENDIDA
+}
+enum Formato {
+LIGA
+ELIMINACION
+}
+Equipo "1" -- "0..*" Jugador : pertenece
+Jugador "1" -- "0..*" FichaMedica : solicita
+HorarioMedico "1" -- "0..*" FichaMedica : historial
+Usuario "1" -- "0..*" HorarioMedico : médico
+Jugador "1" -- "0..*" Habilitacion
+Usuario "1" -- "0..*" Habilitacion : médico emisor
+Torneo "1" -- "0..*" FichaMedica
+Torneo "1" -- "0..*" Habilitacion
+Usuario "1" -- "0..*" Torneo : organizador
+Torneo "0..*" -- "2..*" Equipo : inscribe / equipoIds
+Torneo "1" -- "0..*" Partido
+Usuario "1" -- "0..*" Partido : árbitro
+Equipo "1" -- "0..*" Partido : local
+Equipo "0..1" -- "0..*" Partido : visitante
+Equipo "0..1" -- "0..*" Partido : ganadorPenales
+Equipo "1" -- "0..*" Posicion : fila calculada
+MotorTorneo ..> Partido
+MotorTorneo ..> Torneo
+MotorTorneo ..> Posicion
+CanchaViewModel ..> MotorTorneo
+CanchaViewModel --|> ViewModel
+MainActivity --|> ComponentActivity
+MainActivity ..> CanchaViewModel
+Usuario ..> Rol
+FichaMedica ..> EstadoFicha
+Torneo ..> Formato
+note bottom of HorarioMedico
+Máximo una ficha no rechazada por horario.
+El historial puede contener fichas rechazadas.
+end note
+note bottom of Habilitacion
+Una evaluación vigente por jugador y torneo.
+No contiene datos clínicos.
+end note
+note bottom of Jugador
+El perfil de demostración apunta a jugadorActualId.
+No existe autenticación ni cuenta individual por jugador todavía.
+end note
+@enduml

@@ -1074,7 +1074,6 @@ private fun Torneos(
 
         partidos.forEach { partido ->
             Panel {
-
                 Text(
                     "${vm.equipo(partido.localId).nombre}  vs  ${partido.visitanteId?.let { vm.equipo(it).nombre } ?: "Pase libre"}",
                     fontWeight = FontWeight.Bold
@@ -1377,15 +1376,6 @@ private fun LoginPantalla(
                     fontWeight = FontWeight.SemiBold,
                     color = NegroFH
                 )
-                OutlinedTextField(
-                    value = clave,
-                    onValueChange = { clave = it },
-                    label = { Text("Contraseña") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
 
                 OutlinedTextField(
                     value = correo,
@@ -1395,8 +1385,14 @@ private fun LoginPantalla(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-
-
+                OutlinedTextField(
+                    value = clave,
+                    onValueChange = { clave = it },
+                    label = { Text("Contraseña") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Button(
                     onClick = {

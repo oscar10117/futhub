@@ -1242,7 +1242,7 @@ private fun Configurar(
                 if (ids.isEmpty()) {
                     avisar("Selecciona al menos un equipo")
                 } else {
-                    vm.torneo = Torneo(nombre, formato, ids.toMutableList())
+                    vm.guardarTorneo(nombre, formato, ids)
                     cerrar()
                 }
             },

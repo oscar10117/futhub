@@ -22,6 +22,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.canchabolivia.view.ClimaCard
+import com.example.canchabolivia.viewmodel.ClimaViewModel
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 // COLORES FUTHUB
@@ -378,6 +381,9 @@ private fun Inicio(
             )
         }
     }
+
+    // Clima de La Paz (Open-Meteo + Retrofit, con caché en Room)
+    ClimaCard()
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -881,6 +887,7 @@ private fun PartidosArbitro(
                 )
 
                 when {
+                    partido.cancelado -> Text("✖ Cancelado por clima", color = RojoFH, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     partido.visitanteId == null -> Estado("Clasifica automáticamente")
                     partido.finalizado() -> Text(
                         "${partido.golesLocal} — ${partido.golesVisitante}",
@@ -899,7 +906,7 @@ private fun PartidosArbitro(
                     )
                 }
 
-                if (partido.visitanteId != null) {
+                if (partido.visitanteId != null && !partido.cancelado) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -955,6 +962,10 @@ private fun Torneos(
     var resultado by remember {
         mutableStateOf<Partido?>(null)
     }
+
+    val climaVm: ClimaViewModel = viewModel()
+    val clima = climaVm.estado.collectAsState().value.clima
+    val climaNoApto = clima?.noApto == true
 
     if (editando) {
         Configurar(
@@ -1028,6 +1039,32 @@ private fun Torneos(
         }
     }
 
+    if (vm.rol == Rol.ORGANIZADOR && climaNoApto && clima != null) {
+        val hayPendientes = vm.partidos.any { it.visitanteId != null && !it.finalizado() && !it.cancelado }
+        Panel {
+            Text(
+                "⚠ CLIMA NO APTO PARA JUGAR",
+                color = RojoFH,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "${clima.temperatura.roundToInt()} °C en La Paz (${clima.horaCorta}). " +
+                        "Con más de 32 °C o menos de -15 °C los partidos no son aptos.",
+                fontSize = 13.sp
+            )
+            if (hayPendientes) {
+                Button(
+                    onClick = { avisar(vm.cancelarPendientes()) },
+                    colors = ButtonDefaults.buttonColors(containerColor = RojoFH, contentColor = BlancoFH),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cancelar partidos pendientes", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+
     if (vm.torneo.formato == Formato.LIGA) {
         Panel {
             Titulo("Tabla de posiciones")
@@ -1079,7 +1116,14 @@ private fun Torneos(
                     fontWeight = FontWeight.Bold
                 )
 
-                if (partido.visitanteId == null) {
+                if (partido.cancelado) {
+                    Text(
+                        "✖ Cancelado por clima",
+                        color = RojoFH,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                } else if (partido.visitanteId == null) {
                     Estado("Clasifica automáticamente")
                 } else if (partido.finalizado()) {
                     Text(
@@ -1099,10 +1143,27 @@ private fun Torneos(
                 // Solo el organizador edita resultados desde aquí; el árbitro
                 // lo hace desde su propia pestaña de Partidos.
                 if (vm.rol == Rol.ORGANIZADOR && partido.visitanteId != null) {
-                    OutlinedButton(
-                        onClick = { resultado = partido }
-                    ) {
-                        Text(if (partido.finalizado()) "Modificar resultado" else "Cargar resultado")
+                    if (partido.cancelado) {
+                        OutlinedButton(onClick = { vm.reprogramarPartido(partido.id) }) {
+                            Text("Reprogramar")
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { resultado = partido }) {
+                                Text(if (partido.finalizado()) "Modificar resultado" else "Cargar resultado")
+                            }
+                            if (climaNoApto && !partido.finalizado()) {
+                                Button(
+                                    onClick = {
+                                        vm.cancelarPartido(partido.id)
+                                        avisar("Partido cancelado por clima")
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = RojoFH, contentColor = BlancoFH)
+                                ) {
+                                    Text("Cancelar")
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -1,10 +1,13 @@
 package com.example.canchabolivia.api
 
 import com.example.canchabolivia.dto.ClimaResponseDto
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import java.util.concurrent.TimeUnit
 
 interface OpenMeteoApi {
 
@@ -24,9 +27,19 @@ interface OpenMeteoApi {
         const val LATITUD_LA_PAZ = -16.5
         const val LONGITUD_LA_PAZ = -68.15
 
+        private val cliente: OkHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
+                .writeTimeout(15, TimeUnit.SECONDS)
+                .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
+                .build()
+        }
+
         val instancia: OpenMeteoApi by lazy {
             Retrofit.Builder()
                 .baseUrl(BASE_URL)
+                .client(cliente)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
                 .create(OpenMeteoApi::class.java)

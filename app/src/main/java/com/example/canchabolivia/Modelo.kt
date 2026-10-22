@@ -85,7 +85,8 @@ data class Partido(
     val visitanteId: Int?,
     val golesLocal: Int? = null,
     val golesVisitante: Int? = null,
-    val ganadorPenalesId: Int? = null
+    val ganadorPenalesId: Int? = null,
+    val cancelado: Boolean = false
 ) {
     fun finalizado(): Boolean = golesLocal != null && golesVisitante != null
 
@@ -93,6 +94,7 @@ data class Partido(
     // marcador, decide el ganador de penales; sin penales cargados todavía
     // no hay ganador (avanzar() debe esperar a que se definan).
     fun ganadorId(): Int? = when {
+        cancelado -> null
         visitanteId == null -> localId
         !finalizado() -> null
         golesLocal!! > golesVisitante!! -> localId

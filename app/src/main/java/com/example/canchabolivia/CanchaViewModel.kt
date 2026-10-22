@@ -166,6 +166,27 @@ class CanchaViewModel : ViewModel() {
         }
     }
 
+    // Cancelación por clima no apto (organizador). Solo se cancelan partidos
+    // reales todavía sin resultado; se pueden reprogramar después.
+    fun cancelarPartido(partidoId: Int) {
+        partidos = partidos.map {
+            if (it.id == partidoId && it.visitanteId != null && !it.finalizado()) it.copy(cancelado = true) else it
+        }
+    }
+
+    fun reprogramarPartido(partidoId: Int) {
+        partidos = partidos.map { if (it.id == partidoId) it.copy(cancelado = false) else it }
+    }
+
+    fun cancelarPendientes(): String {
+        val n = partidos.count { it.visitanteId != null && !it.finalizado() && !it.cancelado }
+        if (n == 0) return "No hay partidos pendientes para cancelar"
+        partidos = partidos.map {
+            if (it.visitanteId != null && !it.finalizado()) it.copy(cancelado = true) else it
+        }
+        return if (n == 1) "1 partido cancelado por clima" else "$n partidos cancelados por clima"
+    }
+
     // Toma los resultados de la última ronda de eliminación directa, saca
     // a los ganadores y arma la ronda siguiente. Si algún partido de la
     // última ronda todavía no tiene resultado (o quedó empatado sin
@@ -176,6 +197,8 @@ class CanchaViewModel : ViewModel() {
 
         val ultimaRonda = partidos.maxOf { it.ronda }
         val partidosUltimaRonda = partidos.filter { it.ronda == ultimaRonda }
+
+        if (partidosUltimaRonda.any { it.cancelado }) return "Hay partidos cancelados: reprográmalos para avanzar"
 
         val haySinJugar = partidosUltimaRonda.any { it.visitanteId != null && !it.finalizado() }
         if (haySinJugar) return "Faltan resultados de la ronda $ultimaRonda"

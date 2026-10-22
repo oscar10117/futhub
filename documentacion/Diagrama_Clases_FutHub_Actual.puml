@@ -1,0 +1,344 @@
+@startuml
+!pragma layout smetana
+title FutHub - Diagrama de clases actual (API, modelos, ViewModels, Room v3)
+skinparam backgroundColor #FFFFFF
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+left to right direction
+hide empty members
+package "Clima / API" #E8F5E9 {
+  interface OpenMeteoApi {
+    +clima(latitud: Double, longitud: Double, variables: String, zonaHoraria: String): ClimaResponseDto
+  }
+  class ClimaResponseDto {
+    +latitud: Double?
+    +longitud: Double?
+    +actual: ClimaActualDto?
+  }
+  class ClimaActualDto {
+    +hora: String?
+    +temperatura: Double?
+    +humedad: Int?
+    +viento: Double?
+  }
+  class Clima {
+    +temperatura: Double
+    +humedad: Int
+    +viento: Double
+    +hora: String
+    +desdeCache: Boolean
+    +noApto: Boolean
+    +aptitud: Aptitud
+    +consejo: String
+    +horaCorta: String
+  }
+  enum Aptitud {
+    IDEAL
+    PRECAUCION
+    NO_RECOMENDADO
+  }
+}
+package "Modelo.kt (dominio real)" #FFF3E0 {
+  class Usuario {
+    +id: Int
+    +nombre: String
+    +correo: String
+    +clave: String
+    +rol: Rol
+  }
+  enum Rol {
+    JUGADOR
+    MEDICO
+    ARBITRO
+    ORGANIZADOR
+  }
+  enum Formato {
+    LIGA
+    ELIMINACION
+  }
+  enum EstadoFicha {
+    PENDIENTE
+    ACEPTADA
+    RECHAZADA
+    ATENDIDA
+    APTO
+    NO_APTO
+  }
+  enum TipoTarjeta {
+    AMARILLA
+    ROJA
+  }
+  class Equipo {
+    +id: Int
+    +nombre: String
+    +sigla: String
+  }
+  class Jugador {
+    +id: Int
+    +nombre: String
+    +equipoId: Int
+    +dorsal: Int
+  }
+  class HorarioMedico {
+    +id: Int
+    +medicoId: Int
+    +fecha: String
+    +hora: String
+  }
+  class FichaMedica {
+    +id: Int
+    +jugadorId: Int
+    +horarioId: Int
+    +estado: EstadoFicha
+  }
+  class Torneo {
+    +nombre: String
+    +formato: Formato
+    +equipoIds: MutableList<Int>
+  }
+  class Partido {
+    +id: Int
+    +ronda: Int
+    +localId: Int
+    +visitanteId: Int?
+    +golesLocal: Int?
+    +golesVisitante: Int?
+    +ganadorPenalesId: Int?
+    +cancelado: Boolean
+    +finalizado(): Boolean
+    +ganadorId(): Int?
+  }
+  class Tarjeta {
+    +id: Int
+    +partidoId: Int
+    +jugadorId: Int
+    +tipo: TipoTarjeta
+    +minuto: Int
+  }
+  class Posicion {
+    +equipoId: Int
+    +jugados: Int
+    +ganados: Int
+    +empatados: Int
+    +perdidos: Int
+    +favor: Int
+    +contra: Int
+    +diferencia: Int
+    +puntos: Int
+  }
+  class MotorTorneo <<object>> {
+    +tabla(torneo: Torneo, partidos: List<Partido>): List<Posicion>
+    +siguienteRondaEliminacion(equipoIds: List<Int>, ronda: Int, idInicial: Int): List<Partido>
+  }
+}
+package "Room (database/)" #E3F2FD {
+  abstract class FutHubDatabase {
+    +climaDao(): ClimaDao
+    +equipoDao(): EquipoDao
+    +torneoDao(): TorneoDao
+    +partidoDao(): PartidoDao
+    +fichaDao(): FichaDao
+    +obtener(context: Context): FutHubDatabase
+  }
+  class ClimaEntity <<clima>> {
+    +id: Int [PK]
+    +temperatura: Double
+    +humedad: Int
+    +viento: Double
+    +hora: String
+  }
+  class EquipoEntity <<equipos>> {
+    +id: Int [PK]
+    +nombre: String
+    +sigla: String
+  }
+  class JugadorEntity <<jugadores>> {
+    +id: Int [PK]
+    +nombre: String
+    +equipoId: Int [FK]
+    +dorsal: Int
+  }
+  class TorneoEntity <<torneo>> {
+    +id: Int [PK]
+    +nombre: String
+    +formato: Formato
+  }
+  class TorneoEquipoEntity <<torneo_equipos>> {
+    +torneoId: Int [PK,FK]
+    +equipoId: Int [PK,FK]
+    +posicion: Int
+  }
+  class PartidoEntity <<partidos>> {
+    +id: Int [PK]
+    +ronda: Int
+    +localId: Int [FK]
+    +visitanteId: Int? [FK]
+    +golesLocal: Int?
+    +golesVisitante: Int?
+    +ganadorPenalesId: Int?
+    +cancelado: Boolean
+  }
+  class TarjetaEntity <<tarjetas>> {
+    +id: Int [PK]
+    +partidoId: Int [FK]
+    +jugadorId: Int [FK]
+    +tipo: TipoTarjeta
+    +minuto: Int
+  }
+  class FichaEntity <<fichas>> {
+    +id: Int [PK]
+    +jugadorId: Int [FK]
+    +horarioId: Int
+    +estado: EstadoFicha
+  }
+  interface ClimaDao {
+    +observar(): Flow<ClimaEntity?>
+    +guardar(clima: ClimaEntity)
+  }
+  abstract class EquipoDao {
+    +observarEquipos(): Flow<List<EquipoEntity>>
+    +observarJugadores(): Flow<List<JugadorEntity>>
+    +crearConJugadores(equipo: EquipoEntity, jugadores: List<JugadorEntity>)
+    +eliminarEquipo(id: Int)
+  }
+  abstract class TorneoDao {
+    +observarTorneo(): Flow<TorneoEntity?>
+    +observarEquipoIds(): Flow<List<Int>>
+    +guardar(torneo: TorneoEntity, equipoIds: List<Int>)
+  }
+  abstract class PartidoDao {
+    +observarPartidos(): Flow<List<PartidoEntity>>
+    +observarTarjetas(): Flow<List<TarjetaEntity>>
+    +reemplazarFixture(partidos: List<PartidoEntity>)
+    +insertarPartidos(partidos: List<PartidoEntity>)
+    +actualizarPartidos(partidos: List<PartidoEntity>)
+    +insertarTarjeta(tarjeta: TarjetaEntity)
+  }
+  interface FichaDao {
+    +observarFichas(): Flow<List<FichaEntity>>
+    +insertar(ficha: FichaEntity)
+    +actualizar(ficha: FichaEntity)
+  }
+  class DatosIniciales <<object>> {
+    +insertar(db: SupportSQLiteDatabase)
+    +insertarEquipos(db: SupportSQLiteDatabase)
+    +insertarTorneo(db: SupportSQLiteDatabase)
+  }
+}
+package "Repositorios y ViewModels" #F3E5F5 {
+  class ClimaRepository {
+    -api: OpenMeteoApi
+    -dao: ClimaDao
+    +guardado: Flow<Clima?>
+    +actualizar(): Result<Clima>
+  }
+  class EquiposRepository {
+    -dao: EquipoDao
+    +equipos: Flow<List<Equipo>>
+    +jugadores: Flow<List<Jugador>>
+    +agregar(nombre: String, sigla: String)
+    +eliminar(equipoId: Int)
+  }
+  class TorneoRepository {
+    -torneoDao: TorneoDao
+    -partidoDao: PartidoDao
+    +torneo: Flow<Torneo>
+    +partidos: Flow<List<Partido>>
+    +tarjetas: Flow<List<Tarjeta>>
+    +guardarTorneo(nombre: String, formato: Formato, equipoIds: List<Int>)
+    +reemplazarFixture(partidos: List<Partido>)
+    +agregarPartidos(partidos: List<Partido>)
+    +actualizarPartidos(partidos: List<Partido>)
+    +agregarTarjeta(tarjeta: Tarjeta)
+  }
+  class FichasRepository {
+    -dao: FichaDao
+    +fichas: Flow<List<FichaMedica>>
+    +agregar(ficha: FichaMedica)
+    +actualizar(ficha: FichaMedica)
+  }
+  class ClimaUiState {
+    +clima: Clima?
+    +cargando: Boolean
+    +error: String?
+  }
+  class ClimaViewModel {
+    -repositorio: ClimaRepository
+    +estado: StateFlow<ClimaUiState>
+    +actualizar()
+  }
+  class CanchaViewModel {
+    -db: FutHubDatabase
+    -equiposRepo: EquiposRepository
+    -torneoRepo: TorneoRepository
+    -fichasRepo: FichasRepository
+    +usuarioLogueado: Usuario?
+    +equipos: List<Equipo>
+    +jugadores: List<Jugador>
+    +torneo: Torneo
+    +partidos: List<Partido>
+    +tarjetas: List<Tarjeta>
+    +fichas: List<FichaMedica>
+    +iniciarSesion(correo, clave): String?
+    +agregarEquipo(nombre, sigla)
+    +guardarTorneo(nombre, formato, equipoIds)
+    +generar(sortear): String
+    +registrarResultado(partidoId, golesLocal, golesVisitante, ganadorPenalesId)
+    +cancelarPendientes(): String
+    +agregarTarjeta(partidoId, jugadorId, tipo, minuto)
+    +reservar(horarioId): String
+    +responder(fichaId, aceptar)
+    +evaluar(fichaId, apto)
+  }
+}
+' Las funciones de mapper están a nivel de archivo; no son clases.
+OpenMeteoApi ..> ClimaResponseDto
+ClimaResponseDto --> ClimaActualDto : actual
+ClimaRepository --> OpenMeteoApi
+ClimaRepository --> ClimaDao
+ClimaRepository ..> ClimaResponseDto : aEntity() [ClimaMapper.kt]
+ClimaRepository ..> ClimaEntity : aModelo() [ClimaMapper.kt]
+ClimaRepository ..> Clima
+Clima --> Aptitud
+ClimaViewModel --> ClimaRepository
+ClimaViewModel --> ClimaUiState
+CanchaViewModel --> FutHubDatabase
+CanchaViewModel --> EquiposRepository
+CanchaViewModel --> TorneoRepository
+CanchaViewModel --> FichasRepository
+EquiposRepository --> EquipoDao
+TorneoRepository --> TorneoDao
+TorneoRepository --> PartidoDao
+FichasRepository --> FichaDao
+FutHubDatabase --> ClimaDao
+FutHubDatabase --> EquipoDao
+FutHubDatabase --> TorneoDao
+FutHubDatabase --> PartidoDao
+FutHubDatabase --> FichaDao
+FutHubDatabase ..> DatosIniciales
+EquipoEntity "1" -- "0..*" JugadorEntity : equipoId [CASCADE]
+EquipoEntity "1" -- "0..*" TorneoEquipoEntity : equipoId [CASCADE]
+TorneoEntity "1" -- "0..*" TorneoEquipoEntity : torneoId [CASCADE]
+EquipoEntity "1" -- "0..*" PartidoEntity : localId [CASCADE]
+EquipoEntity "0..1" -- "0..*" PartidoEntity : visitanteId [CASCADE]
+PartidoEntity "1" -- "0..*" TarjetaEntity : partidoId [CASCADE]
+JugadorEntity "1" -- "0..*" TarjetaEntity : jugadorId [CASCADE]
+JugadorEntity "1" -- "0..*" FichaEntity : jugadorId [CASCADE]
+Usuario ..> Rol
+Torneo --> Formato
+TorneoEntity --> Formato
+FichaMedica --> EstadoFicha
+FichaEntity --> EstadoFicha
+Tarjeta --> TipoTarjeta
+TarjetaEntity --> TipoTarjeta
+MotorTorneo ..> Torneo
+MotorTorneo ..> Partido
+MotorTorneo ..> Posicion
+note bottom of FichaEntity
+ horarioId no es FK: horarios fijos en CanchaViewModel.
+end note
+note right of FutHubDatabase
+ futhub.db, Room v3; migraciones 1->2 y 2->3.
+ 8 entidades Room; base LOCAL por dispositivo.
+end note
+@enduml

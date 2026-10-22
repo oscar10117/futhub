@@ -1,0 +1,41 @@
+Crea un prototipo Android llamado Cancha Bolivia, usando Kotlin y Jetpack Compose.
+La entrega académica requiere: interfaz navegable, diagrama UML de clases y las
+mismas clases implementadas en el código de un proyecto de Android Studio.
+
+Problema: en torneos de fútbol de Bolivia hay largas filas para reservar revisiones
+médicas y dificultad para que los árbitros consulten qué jugadores están habilitados.
+
+Alcance de esta primera versión: únicamente interfaz y demostración con datos de
+prueba. No implementar servidor ni autenticación real. Distinguir claramente los
+perfiles mediante un selector: Jugador, Médico, Árbitro y Organizador.
+
+1. Jugador: solicitar ficha en un horario médico disponible. Mostrar estado pendiente,
+aceptada, rechazada o atendida. Evitar reservas duplicadas y horarios ocupados.
+2. Médico: aceptar o rechazar solicitudes. Tras la revisión presencial, marcar apto
+ o no apto para el torneo. Aceptar una cita no habilita automáticamente al jugador.
+3. Equipos: mostrar sus jugadores, dorsal y estado de habilitación para el torneo.
+El árbitro debe consultar este estado sin ver información clínica.
+4. Organizador: configurar nombre del torneo, formato y equipos inscritos. Ofrecer
+sorteo aleatorio y orden manual antes de generar el calendario o la llave.
+5. Liga: todos contra todos a una vuelta. Victoria 3 puntos, empate 1, derrota 0.
+Mostrar tabla con partidos jugados, diferencia de goles y puntos. El campeón se
+define por clasificación, no por eliminación. Si persiste igualdad después de
+puntos, diferencia de goles y goles a favor, señalar que falta un desempate.
+6. Eliminación directa: octavos, cuartos, semifinal y final según participantes.
+Incluir pases libres cuando la cantidad no sea potencia de dos, por ejemplo 10.
+7. Árbitro: registrar marcador. Si hay empate en eliminación, escoger ganador por
+penales. El organizador podrá generar la siguiente ronda cuando termine la actual.
+8. Mantener interfaz en español, colores verde oscuro y verde claro, tarjetas,
+botones claros y navegación inferior: Inicio, Fichas, Equipos y Torneo.
+
+Modelo sugerido: Usuario con Rol; Equipo; Jugador; HorarioMedico; FichaMedica;
+Habilitacion; Torneo con Formato; Partido; Posicion. Agregar MotorTorneo para la
+lógica del calendario y CanchaViewModel para el estado de la demostración.
+Usar claves identificadoras para las relaciones y representarlas con multiplicidades
+en el UML. La habilitación debe relacionar jugador, médico y torneo.
+
+Posponer las convocatorias del entrenador, persistencia, varios torneos simultáneos,
+registro completo de usuarios y edición del calendario después de iniciado.
+Entregar proyecto ZIP con Gradle Wrapper, diagrama visible y fuente editable,
+instrucciones para abrir y guion breve de demostración. Indicar qué se probó y qué
+no se pudo verificar; no presentar una simulación como sistema real.

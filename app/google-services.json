@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1038167175144",
+    "project_id": "futhub-10019",
+    "storage_bucket": "futhub-10019.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1038167175144:android:574e9d07e0e77d76d3fe5d",
+        "android_client_info": {
+          "package_name": "com.example.canchabolivia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNW9rcCj2c1vOdufJv5yMGrlYK_RADpw8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -17,8 +17,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -121,8 +123,19 @@ fun CanchaApp(vm: CanchaViewModel = viewModel()) {
     }
 
     // SI NO HAY SESIÓN INICIADA, MOSTRAR PANTALLA DE LOGIN
+    // Los avisos del login necesitan su propio SnackbarHost: el del Scaffold
+    // de abajo no existe todavía mientras no haya sesión.
     if (vm.usuarioLogueado == null) {
-        LoginPantalla(vm, avisar)
+        Box(modifier = Modifier.fillMaxSize()) {
+            LoginPantalla(vm, avisar)
+            SnackbarHost(
+                snack,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .imePadding()
+            )
+        }
         return
     }
 
@@ -1399,18 +1412,41 @@ private fun TarjetaDialogo(
     )
 }
 
+// La primera pantalla sirve para entrar o crear la cuenta. Al crearla se elige
+// el rol, que queda ligado a la cuenta y decide qué pestaña ve cada usuario.
 @Composable
 private fun LoginPantalla(
     vm: CanchaViewModel,
     avisar: (String) -> Unit
 ) {
+    var creando by rememberSaveable { mutableStateOf(false) }
+    var rol by rememberSaveable { mutableStateOf<Rol?>(null) }
     var correo by rememberSaveable { mutableStateOf("") }
     var clave by rememberSaveable { mutableStateOf("") }
+    var cargando by remember { mutableStateOf(false) }
+    val foco = LocalFocusManager.current
+
+    val alTerminar: (String?) -> Unit = { error ->
+        cargando = false
+        if (error != null) avisar(error)
+    }
+
+    fun enviar() {
+        foco.clearFocus() // cierra el teclado para que el aviso de abajo se vea
+        val elegido = rol
+        when {
+            !creando -> { cargando = true; vm.iniciarSesion(correo, clave, alTerminar) }
+            elegido == null -> avisar("Elige qué eres antes de crear la cuenta")
+            else -> { cargando = true; vm.crearCuenta(correo, clave, elegido, alTerminar) }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(NegroFH)
+            // Sube la tarjeta sobre el teclado para que el botón no quede tapado.
+            .imePadding()
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1432,11 +1468,15 @@ private fun LoginPantalla(
                 )
 
                 Text(
-                    "Iniciar Sesión",
+                    if (creando) "Crear cuenta" else "Iniciar Sesión",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = NegroFH
                 )
+
+                if (creando) {
+                    SelectorRol(rol) { rol = it }
+                }
 
                 OutlinedTextField(
                     value = correo,
@@ -1449,28 +1489,58 @@ private fun LoginPantalla(
                 OutlinedTextField(
                     value = clave,
                     onValueChange = { clave = it },
-                    label = { Text("Contraseña") },
+                    label = { Text(if (creando) "Contraseña (mínimo 6)" else "Contraseña") },
                     singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Button(
-                    onClick = {
-                        val error = vm.iniciarSesion(correo, clave)
-                        if (error != null) {
-                            avisar(error)
-                        }
-                    },
+                    onClick = ::enviar,
+                    enabled = !cargando,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Ingresar", fontWeight = FontWeight.Bold)
+                    Text(if (creando) "Crear cuenta" else "Ingresar", fontWeight = FontWeight.Bold)
                 }
 
-                Text(
-                    "Cuentas demo (clave: 123):\n• jugador@futhub.com\n• medico@futhub.com\n• arbitro@futhub.com\n• admin@futhub.com",
-                    fontSize = 11.sp,
-                    color = GrisFH
+                TextButton(onClick = { creando = !creando }) {
+                    Text(
+                        if (creando) "¿Ya tienes cuenta? Inicia sesión"
+                        else "¿No tienes cuenta? Créala aquí",
+                        color = NaranjaFH
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Casilla desplegable con los cuatro roles.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SelectorRol(elegido: Rol?, alElegir: (Rol) -> Unit) {
+    var abierto by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(expanded = abierto, onExpandedChange = { abierto = it }) {
+        OutlinedTextField(
+            value = elegido?.titulo ?: "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("¿Qué eres?") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = abierto) },
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+            Rol.entries.forEach { rol ->
+                DropdownMenuItem(
+                    text = { Text(rol.titulo) },
+                    onClick = {
+                        alElegir(rol)
+                        abierto = false
+                    }
                 )
             }
         }

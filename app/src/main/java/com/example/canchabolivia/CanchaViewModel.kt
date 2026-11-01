@@ -4,38 +4,90 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.UserProfileChangeRequest
 
 class CanchaViewModel : ViewModel() {
 
-    // --- AUTENTICACIÓN Y LOGIN ---
-    var usuarioLogueado by mutableStateOf<Usuario?>(null)
+    // --- SESIÓN (Firebase Authentication) ---
+    // Firebase guarda el correo y la contraseña. El rol elegido al crear la
+    // cuenta se guarda en su displayName, así queda ligado a la cuenta.
+    // Las respuestas llegan por alTerminar: null si salió bien, o el error.
+    private val auth = FirebaseAuth.getInstance()
 
-    val usuarios = listOf(
-        Usuario(1, "Juan Pérez", "jugador@futhub.com", "123", Rol.JUGADOR),
-        Usuario(2, "Dra. Ana Rojas", "medico@futhub.com", "123", Rol.MEDICO),
-        Usuario(3, "Luis Flores", "arbitro@futhub.com", "123", Rol.ARBITRO),
-        Usuario(4, "Organización La Paz", "admin@futhub.com", "123", Rol.ORGANIZADOR)
-    )
+    // Si ya había una sesión abierta, se entra directo sin pedir la clave.
+    var usuarioLogueado by mutableStateOf(auth.currentUser?.aUsuario())
+        private set
 
-    // El rol activo siempre viene del usuario que inició sesión: ya no existe
-    // un selector manual, así que cada quien solo ve y usa su propia pantalla.
+    // Cada quien solo ve la pantalla de su propio rol.
     val rol: Rol get() = usuarioLogueado?.rol ?: Rol.JUGADOR
 
-    fun iniciarSesion(correo: String, clave: String): String? {
-        val encontrado = usuarios.find {
-            it.correo.equals(correo.trim(), ignoreCase = true) && it.clave == clave.trim()
-        }
+    fun iniciarSesion(correo: String, clave: String, alTerminar: (String?) -> Unit) {
+        if (correo.isBlank() || clave.isBlank()) return alTerminar("Escribe tu correo y contraseña")
 
-        return if (encontrado != null) {
-            usuarioLogueado = encontrado
-            null
-        } else {
-            "Correo o contraseña incorrectos"
-        }
+        auth.signInWithEmailAndPassword(correo.trim(), clave.trim())
+            .addOnSuccessListener { entrar(it.user, alTerminar) }
+            .addOnFailureListener { alTerminar(mensajeDeError(it)) }
+    }
+
+    fun crearCuenta(correo: String, clave: String, rol: Rol, alTerminar: (String?) -> Unit) {
+        if (correo.isBlank() || clave.isBlank()) return alTerminar("Escribe tu correo y contraseña")
+        if (clave.trim().length < 6) return alTerminar("La contraseña debe tener al menos 6 caracteres")
+
+        auth.createUserWithEmailAndPassword(correo.trim(), clave.trim())
+            .addOnSuccessListener { resultado ->
+                val usuario = resultado.user!!
+                val conRol = UserProfileChangeRequest.Builder().setDisplayName(rol.name).build()
+                usuario.updateProfile(conRol)
+                    .addOnSuccessListener { entrar(usuario, alTerminar) }
+                    .addOnFailureListener {
+                        usuario.delete() // sin rol la cuenta quedaría a medias
+                        alTerminar("No se pudo guardar el rol, intenta de nuevo")
+                    }
+            }
+            .addOnFailureListener { alTerminar(mensajeDeError(it)) }
     }
 
     fun cerrarSesion() {
+        auth.signOut()
         usuarioLogueado = null
+    }
+
+    private fun entrar(usuario: FirebaseUser?, alTerminar: (String?) -> Unit) {
+        usuarioLogueado = usuario?.aUsuario()
+        alTerminar(if (usuarioLogueado == null) "No se pudo entrar, intenta de nuevo" else null)
+    }
+
+    // "oscar.lopez@gmail.com" → nombre "Oscar Lopez", con el rol guardado en la cuenta.
+    private fun FirebaseUser.aUsuario(): Usuario {
+        val correo = email.orEmpty()
+        val nombre = correo.substringBefore("@")
+            .split('.', '_', '-')
+            .filter { it.isNotEmpty() }
+            .joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
+        val rol = Rol.entries.find { it.name == displayName } ?: Rol.JUGADOR
+        return Usuario(uid.hashCode(), nombre, correo, "", rol)
+    }
+
+    private fun mensajeDeError(e: Exception): String = when (e) {
+        is FirebaseNetworkException -> "Sin conexión a internet"
+        is FirebaseAuthUserCollisionException -> "Ese correo ya tiene una cuenta"
+        is FirebaseAuthWeakPasswordException -> "La contraseña es muy débil"
+        is FirebaseAuthInvalidUserException -> "Esa cuenta no existe"
+        is FirebaseAuthInvalidCredentialsException -> when (e.errorCode) {
+            "ERROR_WRONG_PASSWORD" -> "Contraseña incorrecta"
+            "ERROR_INVALID_EMAIL" -> "El correo no es válido"
+            // Con la protección contra enumeración de correos activada,
+            // Firebase no dice si falló el correo o la contraseña.
+            else -> "Correo o contraseña incorrectos"
+        }
+        else -> "Algo salió mal, intenta de nuevo"
     }
 
     // --- EQUIPOS (el organizador puede agregar/eliminar) ---

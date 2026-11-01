@@ -20,7 +20,12 @@ abstract class FutHubDatabase : RoomDatabase() {
                     context.applicationContext,
                     FutHubDatabase::class.java,
                     "futhub.db"
-                ).build().also { instancia = it }
+                )
+                    // Solo guarda caché del clima: si la versión del esquema no coincide
+                    // (por ejemplo, la base quedó de otra rama), se borra y se recrea.
+                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
+                    .build().also { instancia = it }
             }
     }
 }

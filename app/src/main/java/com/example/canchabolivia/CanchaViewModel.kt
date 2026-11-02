@@ -4,6 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.canchabolivia.api.FutHubNubeApi
+import com.example.canchabolivia.repository.NubeRepository
 import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
@@ -12,6 +15,9 @@ import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class CanchaViewModel : ViewModel() {
 
@@ -90,6 +96,51 @@ class CanchaViewModel : ViewModel() {
         else -> "Algo salió mal, intenta de nuevo"
     }
 
+    // --- DATOS EN SQLITE CLOUD ---
+    // El login es de Firebase; los datos del torneo viven en SQLite Cloud.
+    // Las listas de abajo son el punto de partida (y lo que se usa sin internet).
+    // Al abrir la app se reemplazan con lo que hay en la nube, y cada cambio
+    // se sube con la Edge Function que corresponde (ver NubeRepository).
+    private val nube: NubeRepository? =
+        if (FutHubNubeApi.configurada) NubeRepository(FutHubNubeApi.instancia) else null
+
+    // Las subidas van de una en una y en orden, para que un cambio viejo
+    // nunca pise a uno más nuevo.
+    private val colaNube = Mutex()
+
+    var estadoNube by mutableStateOf(
+        if (nube == null) "Base de datos: sin configurar (datos de ejemplo)" else "Base de datos: conectando..."
+    )
+        private set
+
+    private fun enNube(accion: String, subir: suspend NubeRepository.() -> Result<Unit>) {
+        val repo = nube ?: return
+        viewModelScope.launch {
+            colaNube.withLock {
+                repo.subir().onFailure { estadoNube = "No se pudo $accion en la nube" }
+            }
+        }
+    }
+
+    // Trae todo de SQLite Cloud. Se asignan los campos internos (_torneo,
+    // _partidos) para no volver a subir lo que se acaba de bajar.
+    fun recargarDesdeNube() {
+        val repo = nube ?: return
+        viewModelScope.launch {
+            repo.cargarDatos()
+                .onSuccess { datos ->
+                    equipos = datos.equipos
+                    jugadores = datos.jugadores
+                    fichas = datos.fichas
+                    datos.torneo?.let { _torneo = it }
+                    _partidos = datos.partidos
+                    tarjetas = datos.tarjetas
+                    estadoNube = "Base de datos: conectada"
+                }
+                .onFailure { estadoNube = "Base de datos: sin conexión (datos de ejemplo)" }
+        }
+    }
+
     // --- EQUIPOS (el organizador puede agregar/eliminar) ---
     var equipos by mutableStateOf(
         listOf(
@@ -115,11 +166,14 @@ class CanchaViewModel : ViewModel() {
 
     fun agregarEquipo(nombre: String, sigla: String) {
         val nuevoId = (equipos.maxOfOrNull { it.id } ?: 0) + 1
-        equipos = equipos + Equipo(nuevoId, nombre, sigla.uppercase())
-        jugadores = jugadores + listOf(
+        val nuevo = Equipo(nuevoId, nombre, sigla.uppercase())
+        val nuevosJugadores = listOf(
             Jugador(nuevoId * 10 + 1, "Jugador 1", nuevoId, 10),
             Jugador(nuevoId * 10 + 2, "Jugador 2", nuevoId, 7)
         )
+        equipos = equipos + nuevo
+        jugadores = jugadores + nuevosJugadores
+        enNube("guardar el equipo") { guardarEquipo(nuevo, nuevosJugadores) }
     }
 
     // Borrar un equipo también limpia todo lo que dependía de él (jugadores,
@@ -134,6 +188,7 @@ class CanchaViewModel : ViewModel() {
         partidos = partidos.filterNot { it.localId == equipoId || it.visitanteId == equipoId }
         fichas = fichas.filterNot { it.jugadorId in idsJugadoresEliminados }
         tarjetas = tarjetas.filterNot { it.jugadorId in idsJugadoresEliminados }
+        enNube("eliminar el equipo") { eliminarEquipo(equipoId) }
     }
 
     fun equipo(id: Int): Equipo = equipos.firstOrNull { it.id == id } ?: Equipo(id, "Equipo eliminado", "—")
@@ -157,8 +212,9 @@ class CanchaViewModel : ViewModel() {
     }
 
     fun reservar(horarioId: Int): String {
-        val nueva = FichaMedica(fichas.size + 1, jugadorActualId, horarioId)
+        val nueva = FichaMedica((fichas.maxOfOrNull { it.id } ?: 0) + 1, jugadorActualId, horarioId)
         fichas = fichas + nueva
+        enNube("guardar la ficha") { guardarFicha(nueva) }
         return "Solicitud enviada correctamente"
     }
 
@@ -171,6 +227,7 @@ class CanchaViewModel : ViewModel() {
                 ficha.copy(estado = if (aceptar) EstadoFicha.ACEPTADA else EstadoFicha.RECHAZADA)
             } else ficha
         }
+        subirFicha(fichaId)
     }
 
     fun evaluar(fichaId: Int, apto: Boolean) {
@@ -179,14 +236,37 @@ class CanchaViewModel : ViewModel() {
                 ficha.copy(estado = if (apto) EstadoFicha.APTO else EstadoFicha.NO_APTO)
             } else ficha
         }
+        subirFicha(fichaId)
+    }
+
+    private fun subirFicha(fichaId: Int) {
+        val ficha = fichas.firstOrNull { it.id == fichaId } ?: return
+        enNube("guardar la ficha") { guardarFicha(ficha) }
     }
 
     // --- TORNEO Y PARTIDOS ---
-    var torneo by mutableStateOf(Torneo("Copa La Paz", Formato.LIGA, mutableListOf(1, 2, 4, 5)))
-    var partidos by mutableStateOf(listOf<Partido>())
+    // Cada vez que se asigna torneo o partidos (generar, resultados, cancelar,
+    // avanzar...), el setter lo sube solo a SQLite Cloud.
+    private var _torneo by mutableStateOf(Torneo("Copa La Paz", Formato.LIGA, mutableListOf(1, 2, 4, 5)))
+    var torneo: Torneo
+        get() = _torneo
+        set(valor) {
+            _torneo = valor
+            enNube("guardar el torneo") { guardarTorneo(valor) }
+        }
+
+    private var _partidos by mutableStateOf(listOf<Partido>())
+    var partidos: List<Partido>
+        get() = _partidos
+        set(valor) {
+            _partidos = valor
+            enNube("guardar los partidos") { guardarPartidos(valor) }
+        }
 
     fun generar(sortear: Boolean): String {
         val ids = if (sortear) torneo.equipoIds.shuffled() else torneo.equipoIds
+        if (ids.size < 2) return "Elige al menos 2 equipos en Configurar"
+        if (torneo.formato == Formato.GRUPOS && ids.size < 4) return "La fase de grupos necesita al menos 4 equipos"
 
         partidos = when (torneo.formato) {
             // Todos contra todos: un partido por cada par de equipos.
@@ -203,10 +283,28 @@ class CanchaViewModel : ViewModel() {
             // Eliminación directa: solo se arma la primera ronda, las
             // siguientes salen de avanzar() con los ganadores reales.
             Formato.ELIMINACION -> MotorTorneo.siguienteRondaEliminacion(ids, ronda = 1, idInicial = 1)
+            // Tipo Mundial: primero solo la fase de grupos; la eliminación
+            // se arma con avanzar() cuando terminan los grupos.
+            Formato.GRUPOS -> MotorTorneo.armarGrupos(ids, idInicial = 1)
         }
 
         return "Fixture generado"
     }
+
+    // Borra el fixture (y sus tarjetas) para poder configurar y jugar otro
+    // torneo. Los equipos y jugadores se mantienen.
+    fun nuevoTorneo(): String {
+        tarjetas = emptyList()
+        partidos = emptyList()
+        return "Listo: configura el nuevo torneo"
+    }
+
+    // Partidos de eliminación directa (en GRUPOS, los que no son de un grupo).
+    private val eliminatoria: List<Partido> get() = partidos.filter { it.grupo == null }
+
+    // Un empate necesita penales solo en partidos de eliminación.
+    fun necesitaPenales(partido: Partido): Boolean =
+        partido.visitanteId != null && partido.grupo == null && torneo.formato != Formato.LIGA
 
     // Nunca se muta un Partido existente: siempre se reemplaza por una
     // copia dentro de la lista (igual que con las fichas médicas).
@@ -244,11 +342,22 @@ class CanchaViewModel : ViewModel() {
     // última ronda todavía no tiene resultado (o quedó empatado sin
     // penales), avisa en vez de avanzar con datos incompletos.
     fun avanzar(): String {
-        if (torneo.formato != Formato.ELIMINACION) return "Esta acción es solo para eliminación directa"
+        if (torneo.formato == Formato.LIGA) return "Esta acción es solo para torneos con eliminación"
         if (partidos.isEmpty()) return "Primero genera el fixture"
 
-        val ultimaRonda = partidos.maxOf { it.ronda }
-        val partidosUltimaRonda = partidos.filter { it.ronda == ultimaRonda }
+        // Tipo Mundial: si todavía no hay eliminatoria, se cierran los grupos
+        // y pasan los 2 primeros de cada uno.
+        if (torneo.formato == Formato.GRUPOS && eliminatoria.isEmpty()) {
+            if (partidos.any { it.cancelado }) return "Hay partidos cancelados: reprográmalos para avanzar"
+            if (partidos.any { !it.finalizado() }) return "Faltan resultados de la fase de grupos"
+            val clasificados = MotorTorneo.clasificados(partidos)
+            val idInicial = partidos.maxOf { it.id } + 1
+            partidos = partidos + MotorTorneo.siguienteRondaEliminacion(clasificados, ronda = 2, idInicial = idInicial)
+            return "Fase de grupos cerrada: empieza la eliminación directa"
+        }
+
+        val ultimaRonda = eliminatoria.maxOf { it.ronda }
+        val partidosUltimaRonda = eliminatoria.filter { it.ronda == ultimaRonda }
 
         if (partidosUltimaRonda.any { it.cancelado }) return "Hay partidos cancelados: reprográmalos para avanzar"
 
@@ -276,9 +385,10 @@ class CanchaViewModel : ViewModel() {
                 if (!partidos.all { it.finalizado() }) return null
                 MotorTorneo.tabla(torneo, partidos).firstOrNull()?.let { equipo(it.equipoId).nombre }
             }
-            Formato.ELIMINACION -> {
-                val ultimaRonda = partidos.maxOf { it.ronda }
-                val partidosUltimaRonda = partidos.filter { it.ronda == ultimaRonda }
+            Formato.ELIMINACION, Formato.GRUPOS -> {
+                if (eliminatoria.isEmpty()) return null
+                val ultimaRonda = eliminatoria.maxOf { it.ronda }
+                val partidosUltimaRonda = eliminatoria.filter { it.ronda == ultimaRonda }
                 if (partidosUltimaRonda.size != 1) return null
                 partidosUltimaRonda.single().ganadorId()?.let { equipo(it).nombre }
             }
@@ -290,8 +400,16 @@ class CanchaViewModel : ViewModel() {
 
     fun agregarTarjeta(partidoId: Int, jugadorId: Int, tipo: TipoTarjeta, minuto: Int) {
         val nuevaId = (tarjetas.maxOfOrNull { it.id } ?: 0) + 1
-        tarjetas = tarjetas + Tarjeta(nuevaId, partidoId, jugadorId, tipo, minuto)
+        val nueva = Tarjeta(nuevaId, partidoId, jugadorId, tipo, minuto)
+        tarjetas = tarjetas + nueva
+        enNube("guardar la tarjeta") { guardarTarjeta(nueva) }
     }
 
     fun tarjetasDe(partidoId: Int): List<Tarjeta> = tarjetas.filter { it.partidoId == partidoId }
+
+    // Va al final a propósito: así todas las listas de arriba ya existen
+    // cuando llegan los datos de la nube.
+    init {
+        recargarDesdeNube()
+    }
 }

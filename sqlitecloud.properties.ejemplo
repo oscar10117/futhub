@@ -1,0 +1,10 @@
+# Copia este archivo como sqlitecloud.properties (misma carpeta) y llena tus datos.
+# sqlitecloud.properties NO se sube a Git porque tiene tu API key.
+
+# URL de las Edge Functions SIN el nombre de la función, terminando en /
+# Ej.: si la Function URL de "login" es https://abc123.g4.sqlite.cloud:443/v2/functions/login
+#      aquí va https://abc123.g4.sqlite.cloud:443/v2/functions/
+url=
+
+# API key del proyecto (Settings > API Keys)
+apikey=

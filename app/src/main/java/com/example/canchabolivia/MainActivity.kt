@@ -889,8 +889,16 @@ private fun PartidosArbitro(
         return
     }
 
-    vm.partidos.groupBy { it.ronda }.forEach { (ronda, partidos) ->
-        Titulo(if (vm.torneo.formato == Formato.LIGA) "Fecha $ronda" else "Ronda $ronda")
+    vm.partidos.groupBy { it.grupo?.let { g -> -1 - g } ?: it.ronda }.forEach { (_, partidos) ->
+        val ronda = partidos.first().ronda
+        val grupo = partidos.first().grupo
+        Titulo(
+            when {
+                grupo != null -> "Grupo ${MotorTorneo.letraGrupo(grupo)}"
+                vm.torneo.formato == Formato.LIGA -> "Fecha $ronda"
+                else -> "Ronda $ronda"
+            }
+        )
 
         partidos.forEach { partido ->
             Panel {
@@ -976,6 +984,8 @@ private fun Torneos(
         mutableStateOf<Partido?>(null)
     }
 
+    var confirmarNuevo by remember { mutableStateOf(false) }
+
     val climaVm: ClimaViewModel = viewModel()
     val clima = climaVm.estado.collectAsState().value.clima
     val climaNoApto = clima?.noApto == true
@@ -1034,11 +1044,23 @@ private fun Torneos(
             )
         }
 
-        if (vm.rol == Rol.ORGANIZADOR && vm.torneo.formato == Formato.ELIMINACION && vm.partidos.isNotEmpty() && vm.campeon() == null) {
+        if (vm.rol == Rol.ORGANIZADOR && vm.torneo.formato != Formato.LIGA && vm.partidos.isNotEmpty() && vm.campeon() == null) {
+            val enGrupos = vm.torneo.formato == Formato.GRUPOS && vm.partidos.none { it.grupo == null }
             Button(
                 onClick = { avisar(vm.avanzar()) }
             ) {
-                Text("Crear siguiente ronda")
+                Text(if (enGrupos) "Cerrar grupos y armar eliminación" else "Crear siguiente ronda")
+            }
+        }
+
+        // Con el fixture ya generado, la única forma de cambiar de torneo es
+        // empezar uno nuevo (antes no había botón y quedaba trancado).
+        if (vm.rol == Rol.ORGANIZADOR && vm.partidos.isNotEmpty()) {
+            OutlinedButton(
+                onClick = { confirmarNuevo = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (vm.campeon() != null) "Terminar torneo y crear otro" else "Borrar fixture y empezar de nuevo")
             }
         }
 
@@ -1079,36 +1101,26 @@ private fun Torneos(
     }
 
     if (vm.torneo.formato == Formato.LIGA) {
-        Panel {
-            Titulo("Tabla de posiciones")
+        TablaPosiciones(vm, "Tabla de posiciones", vm.torneo.equipoIds, vm.partidos)
+    }
 
-            Text(
-                "Equipo           PJ    DG    PTS",
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
-            )
-
-            MotorTorneo.tabla(vm.torneo, vm.partidos).forEachIndexed { i, p ->
-                Row(Modifier.fillMaxWidth()) {
-                    Text(
-                        "${i + 1}. ${vm.equipo(p.equipoId).sigla}",
-                        Modifier.weight(1f)
-                    )
-                    Text("${p.jugados}", Modifier.width(40.dp))
-                    Text("${p.diferencia}", Modifier.width(40.dp))
-                    Text("${p.puntos}", Modifier.width(32.dp), fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Text(
-                "Victoria 3 · Empate 1 · Derrota 0\nDesempate: diferencia de goles y goles a favor.",
-                fontSize = 11.sp
+    if (vm.torneo.formato == Formato.GRUPOS) {
+        vm.partidos.mapNotNull { it.grupo }.distinct().sorted().forEach { g ->
+            TablaPosiciones(
+                vm,
+                "Grupo ${MotorTorneo.letraGrupo(g)} · pasan los 2 primeros",
+                MotorTorneo.equiposDelGrupo(vm.partidos, g),
+                vm.partidos.filter { it.grupo == g }
             )
         }
     }
 
-    vm.partidos.groupBy { it.ronda }.forEach { (ronda, partidos) ->
-        val etiqueta = if (vm.torneo.formato == Formato.LIGA) {
+    vm.partidos.groupBy { it.grupo?.let { g -> -1 - g } ?: it.ronda }.forEach { (_, partidos) ->
+        val ronda = partidos.first().ronda
+        val grupo = partidos.first().grupo
+        val etiqueta = if (grupo != null) {
+            "Grupo ${MotorTorneo.letraGrupo(grupo)}"
+        } else if (vm.torneo.formato == Formato.LIGA) {
             "Fecha $ronda"
         } else {
             when (partidos.size) {
@@ -1183,6 +1195,23 @@ private fun Torneos(
         }
     }
 
+    if (confirmarNuevo) {
+        AlertDialog(
+            onDismissRequest = { confirmarNuevo = false },
+            title = { Text("¿Empezar otro torneo?") },
+            text = { Text("Se borran los partidos, resultados y tarjetas de este torneo. Los equipos y jugadores se mantienen.") },
+            confirmButton = {
+                Button(onClick = {
+                    avisar(vm.nuevoTorneo())
+                    confirmarNuevo = false
+                }) { Text("Sí, empezar otro") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmarNuevo = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
     resultado?.let { p ->
         ResultadoDialogo(
             vm = vm,
@@ -1192,6 +1221,42 @@ private fun Torneos(
                 vm.registrarResultado(p.id, gl, gv, penal)
                 avisar("Resultado guardado")
             }
+        )
+    }
+}
+
+// Tabla de posiciones de una liga o de un grupo.
+@Composable
+private fun TablaPosiciones(
+    vm: CanchaViewModel,
+    titulo: String,
+    equipoIds: List<Int>,
+    partidos: List<Partido>
+) {
+    Panel {
+        Titulo(titulo)
+
+        Text(
+            "Equipo           PJ    DG    PTS",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp
+        )
+
+        MotorTorneo.tabla(equipoIds, partidos).forEachIndexed { i, p ->
+            Row(Modifier.fillMaxWidth()) {
+                Text(
+                    "${i + 1}. ${vm.equipo(p.equipoId).sigla}",
+                    Modifier.weight(1f)
+                )
+                Text("${p.jugados}", Modifier.width(40.dp))
+                Text("${p.diferencia}", Modifier.width(40.dp))
+                Text("${p.puntos}", Modifier.width(32.dp), fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Text(
+            "Victoria 3 · Empate 1 · Derrota 0\nDesempate: diferencia de goles y goles a favor.",
+            fontSize = 11.sp
         )
     }
 }
@@ -1218,7 +1283,7 @@ private fun Configurar(
 
         Text("Tipo de torneo:", fontWeight = FontWeight.Bold)
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column {
             Formato.entries.forEach { f ->
                 FilterChip(
                     selected = formato == f,
@@ -1280,7 +1345,7 @@ private fun ResultadoDialogo(
     val empatado = gl.toIntOrNull() != null && gl.toIntOrNull() == gv.toIntOrNull()
     // Solo en eliminación directa un empate necesita penales: en liga el
     // empate ya se refleja en la tabla de posiciones tal cual.
-    val necesitaPenales = empatado && vm.torneo.formato == Formato.ELIMINACION && partido.visitanteId != null
+    val necesitaPenales = empatado && vm.necesitaPenales(partido)
 
     AlertDialog(
         onDismissRequest = cerrar,
@@ -1511,6 +1576,8 @@ private fun LoginPantalla(
                         color = NaranjaFH
                     )
                 }
+
+                Text(vm.estadoNube, fontSize = 11.sp, color = GrisFH)
             }
         }
     }

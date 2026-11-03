@@ -48,5 +48,7 @@ class TorneoRepository(
     suspend fun actualizarPartidos(partidos: List<Partido>) =
         partidoDao.actualizarPartidos(partidos.map { it.aEntity() })
 
-    suspend fun agregarTarjeta(tarjeta: Tarjeta) = partidoDao.insertarTarjeta(tarjeta.aEntity())
+    // El id lo pone Room; se devuelve la tarjeta ya con su id.
+    suspend fun agregarTarjeta(tarjeta: Tarjeta): Tarjeta =
+        tarjeta.copy(id = partidoDao.insertarTarjeta(tarjeta.aEntity()).toInt())
 }

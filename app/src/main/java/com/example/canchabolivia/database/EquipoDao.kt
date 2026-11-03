@@ -25,10 +25,14 @@ abstract class EquipoDao {
 
     // Equipo y plantel van juntos: si algo falla no queda un equipo sin jugadores.
     @Transaction
-    open suspend fun crearConJugadores(equipo: EquipoEntity, jugadores: List<JugadorEntity>) {
+    open suspend fun crearConJugadores(equipo: EquipoEntity, jugadores: List<JugadorEntity>): Int {
         val equipoId = insertarEquipo(equipo).toInt()
         insertarJugadores(jugadores.map { it.copy(equipoId = equipoId) })
+        return equipoId
     }
+
+    @Query("SELECT * FROM jugadores WHERE equipoId = :equipoId ORDER BY id")
+    abstract suspend fun jugadoresDe(equipoId: Int): List<JugadorEntity>
 
     // Los jugadores del equipo se borran solos por el ON DELETE CASCADE.
     @Query("DELETE FROM equipos WHERE id = :id")
@@ -39,7 +43,7 @@ abstract class EquipoDao {
 
     // --- Plantel (el organizador agrega, edita y quita jugadores) ---
     @Insert
-    abstract suspend fun insertarJugador(jugador: JugadorEntity)
+    abstract suspend fun insertarJugador(jugador: JugadorEntity): Long
 
     @Update
     abstract suspend fun actualizarJugador(jugador: JugadorEntity)

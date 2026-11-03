@@ -24,7 +24,8 @@ fun PartidoEntity.aModelo() = Partido(
     golesLocal = golesLocal,
     golesVisitante = golesVisitante,
     ganadorPenalesId = ganadorPenalesId,
-    cancelado = cancelado
+    cancelado = cancelado,
+    grupo = grupo
 )
 
 fun Partido.aEntity() = PartidoEntity(
@@ -35,7 +36,8 @@ fun Partido.aEntity() = PartidoEntity(
     golesLocal = golesLocal,
     golesVisitante = golesVisitante,
     ganadorPenalesId = ganadorPenalesId,
-    cancelado = cancelado
+    cancelado = cancelado,
+    grupo = grupo
 )
 
 fun TarjetaEntity.aModelo() =

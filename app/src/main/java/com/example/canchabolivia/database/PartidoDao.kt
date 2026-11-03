@@ -36,5 +36,5 @@ abstract class PartidoDao {
     abstract suspend fun actualizarPartidos(partidos: List<PartidoEntity>)
 
     @Insert
-    abstract suspend fun insertarTarjeta(tarjeta: TarjetaEntity)
+    abstract suspend fun insertarTarjeta(tarjeta: TarjetaEntity): Long
 }

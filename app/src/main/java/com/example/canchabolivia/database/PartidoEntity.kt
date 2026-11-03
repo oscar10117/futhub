@@ -35,5 +35,7 @@ data class PartidoEntity(
     val golesLocal: Int?,
     val golesVisitante: Int?,
     val ganadorPenalesId: Int?,
-    val cancelado: Boolean
+    val cancelado: Boolean,
+    // versión 5: formato GRUPOS (0 = Grupo A...). null = partido de eliminación.
+    val grupo: Int? = null
 )

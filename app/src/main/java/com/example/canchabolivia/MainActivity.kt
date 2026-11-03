@@ -17,8 +17,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -121,8 +123,19 @@ fun CanchaApp(vm: CanchaViewModel = viewModel()) {
     }
 
     // SI NO HAY SESIÓN INICIADA, MOSTRAR PANTALLA DE LOGIN
+    // Los avisos del login necesitan su propio SnackbarHost: el del Scaffold
+    // de abajo no existe todavía mientras no haya sesión.
     if (vm.usuarioLogueado == null) {
-        LoginPantalla(vm, avisar)
+        Box(modifier = Modifier.fillMaxSize()) {
+            LoginPantalla(vm)
+            SnackbarHost(
+                snack,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .imePadding()
+            )
+        }
         return
     }
 
@@ -1085,8 +1098,16 @@ private fun PartidosArbitro(
         }
     }
 
-    vm.partidos.groupBy { it.ronda }.forEach { (ronda, partidos) ->
-        Titulo(if (vm.torneo.formato == Formato.LIGA) "Fecha $ronda" else "Ronda $ronda")
+    vm.partidos.groupBy { it.grupo?.let { g -> -1 - g } ?: it.ronda }.forEach { (_, partidos) ->
+        val ronda = partidos.first().ronda
+        val grupo = partidos.first().grupo
+        Titulo(
+            when {
+                grupo != null -> "Grupo ${MotorTorneo.letraGrupo(grupo)}"
+                vm.torneo.formato == Formato.LIGA -> "Fecha $ronda"
+                else -> "Ronda $ronda"
+            }
+        )
 
         partidos.forEach { partido ->
             Panel {
@@ -1240,11 +1261,12 @@ private fun Torneos(
             )
         }
 
-        if (vm.rol == Rol.ORGANIZADOR && !terminado && vm.torneo.formato == Formato.ELIMINACION && vm.partidos.isNotEmpty() && vm.campeon() == null) {
+        if (vm.rol == Rol.ORGANIZADOR && !terminado && vm.torneo.formato != Formato.LIGA && vm.partidos.isNotEmpty() && vm.campeon() == null) {
+            val enGrupos = vm.torneo.formato == Formato.GRUPOS && vm.partidos.none { it.grupo == null }
             Button(
                 onClick = { avisar(vm.avanzar()) }
             ) {
-                Text("Crear siguiente ronda")
+                Text(if (enGrupos) "Cerrar grupos y armar eliminación" else "Crear siguiente ronda")
             }
         }
 
@@ -1336,36 +1358,26 @@ private fun Torneos(
     }
 
     if (vm.torneo.formato == Formato.LIGA) {
-        Panel {
-            Titulo("Tabla de posiciones")
+        TablaPosiciones(vm, "Tabla de posiciones", vm.torneo.equipoIds, vm.partidos)
+    }
 
-            Text(
-                "Equipo           PJ    DG    PTS",
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
-            )
-
-            MotorTorneo.tabla(vm.torneo, vm.partidos).forEachIndexed { i, p ->
-                Row(Modifier.fillMaxWidth()) {
-                    Text(
-                        "${i + 1}. ${vm.equipo(p.equipoId).sigla}",
-                        Modifier.weight(1f)
-                    )
-                    Text("${p.jugados}", Modifier.width(40.dp))
-                    Text("${p.diferencia}", Modifier.width(40.dp))
-                    Text("${p.puntos}", Modifier.width(32.dp), fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Text(
-                "Victoria 3 · Empate 1 · Derrota 0\nDesempate: diferencia de goles y goles a favor.",
-                fontSize = 11.sp
+    if (vm.torneo.formato == Formato.GRUPOS) {
+        vm.partidos.mapNotNull { it.grupo }.distinct().sorted().forEach { g ->
+            TablaPosiciones(
+                vm,
+                "Grupo ${MotorTorneo.letraGrupo(g)} · pasan los 2 primeros",
+                MotorTorneo.equiposDelGrupo(vm.partidos, g),
+                vm.partidos.filter { it.grupo == g }
             )
         }
     }
 
-    vm.partidos.groupBy { it.ronda }.forEach { (ronda, partidos) ->
-        val etiqueta = if (vm.torneo.formato == Formato.LIGA) {
+    vm.partidos.groupBy { it.grupo?.let { g -> -1 - g } ?: it.ronda }.forEach { (_, partidos) ->
+        val ronda = partidos.first().ronda
+        val grupo = partidos.first().grupo
+        val etiqueta = if (grupo != null) {
+            "Grupo ${MotorTorneo.letraGrupo(grupo)}"
+        } else if (vm.torneo.formato == Formato.LIGA) {
             "Fecha $ronda"
         } else {
             when (partidos.size) {
@@ -1453,6 +1465,42 @@ private fun Torneos(
     }
 }
 
+// Tabla de posiciones de una liga o de un grupo.
+@Composable
+private fun TablaPosiciones(
+    vm: CanchaViewModel,
+    titulo: String,
+    equipoIds: List<Int>,
+    partidos: List<Partido>
+) {
+    Panel {
+        Titulo(titulo)
+
+        Text(
+            "Equipo           PJ    DG    PTS",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp
+        )
+
+        MotorTorneo.tabla(equipoIds, partidos).forEachIndexed { i, p ->
+            Row(Modifier.fillMaxWidth()) {
+                Text(
+                    "${i + 1}. ${vm.equipo(p.equipoId).sigla}",
+                    Modifier.weight(1f)
+                )
+                Text("${p.jugados}", Modifier.width(40.dp))
+                Text("${p.diferencia}", Modifier.width(40.dp))
+                Text("${p.puntos}", Modifier.width(32.dp), fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Text(
+            "Victoria 3 · Empate 1 · Derrota 0\nDesempate: diferencia de goles y goles a favor.",
+            fontSize = 11.sp
+        )
+    }
+}
+
 @Composable
 private fun Configurar(
     vm: CanchaViewModel,
@@ -1475,7 +1523,7 @@ private fun Configurar(
 
         Text("Tipo de torneo:", fontWeight = FontWeight.Bold)
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column {
             Formato.entries.forEach { f ->
                 FilterChip(
                     selected = formato == f,
@@ -1537,7 +1585,7 @@ private fun ResultadoDialogo(
     val empatado = gl.toIntOrNull() != null && gl.toIntOrNull() == gv.toIntOrNull()
     // Solo en eliminación directa un empate necesita penales: en liga el
     // empate ya se refleja en la tabla de posiciones tal cual.
-    val necesitaPenales = empatado && vm.torneo.formato == Formato.ELIMINACION && partido.visitanteId != null
+    val necesitaPenales = empatado && vm.necesitaPenales(partido)
 
     AlertDialog(
         onDismissRequest = cerrar,
@@ -1669,18 +1717,42 @@ private fun TarjetaDialogo(
     )
 }
 
+// La primera pantalla sirve para entrar o crear la cuenta. Al crearla se elige
+// el rol, que queda ligado a la cuenta y decide qué pestaña ve cada usuario.
 @Composable
-private fun LoginPantalla(
-    vm: CanchaViewModel,
-    avisar: (String) -> Unit
-) {
+private fun LoginPantalla(vm: CanchaViewModel) {
+    var creando by rememberSaveable { mutableStateOf(false) }
+    var rol by rememberSaveable { mutableStateOf<Rol?>(null) }
     var correo by rememberSaveable { mutableStateOf("") }
     var clave by rememberSaveable { mutableStateOf("") }
+    var cargando by remember { mutableStateOf(false) }
+    // Error del último intento: se muestra en rojo dentro de la tarjeta.
+    var error by remember { mutableStateOf<String?>(null) }
+    val claveIncorrecta = error == CanchaViewModel.CLAVE_INCORRECTA
+    val foco = LocalFocusManager.current
+
+    val alTerminar: (String?) -> Unit = {
+        cargando = false
+        error = it
+    }
+
+    fun enviar() {
+        foco.clearFocus() // cierra el teclado para que el aviso de abajo se vea
+        val elegido = rol
+        error = null
+        when {
+            !creando -> { cargando = true; vm.iniciarSesion(correo, clave, alTerminar) }
+            elegido == null -> error = "Elige qué eres antes de crear la cuenta"
+            else -> { cargando = true; vm.crearCuenta(correo, clave, elegido, alTerminar) }
+        }
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(NegroFH)
+            // Sube la tarjeta sobre el teclado para que el botón no quede tapado.
+            .imePadding()
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1702,15 +1774,19 @@ private fun LoginPantalla(
                 )
 
                 Text(
-                    "Iniciar Sesión",
+                    if (creando) "Crear cuenta" else "Iniciar Sesión",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = NegroFH
                 )
 
+                if (creando) {
+                    SelectorRol(rol) { rol = it }
+                }
+
                 OutlinedTextField(
                     value = correo,
-                    onValueChange = { correo = it },
+                    onValueChange = { correo = it; error = null },
                     label = { Text("Correo electrónico") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -1718,29 +1794,72 @@ private fun LoginPantalla(
 
                 OutlinedTextField(
                     value = clave,
-                    onValueChange = { clave = it },
-                    label = { Text("Contraseña") },
+                    onValueChange = { clave = it; error = null },
+                    label = { Text(if (creando) "Contraseña (mínimo 6)" else "Contraseña") },
                     singleLine = true,
+                    isError = claveIncorrecta,
+                    visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Button(
-                    onClick = {
-                        val error = vm.iniciarSesion(correo, clave)
-                        if (error != null) {
-                            avisar(error)
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Ingresar", fontWeight = FontWeight.Bold)
+                error?.let {
+                    Text(
+                        "Error: ${it.replaceFirstChar(Char::lowercase)}",
+                        color = RojoFH,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
 
-                Text(
-                    "Cuentas demo (clave: 123):\n• jugador@futhub.com\n• medico@futhub.com\n• arbitro@futhub.com\n• admin@futhub.com",
-                    fontSize = 11.sp,
-                    color = GrisFH
+                Button(
+                    onClick = ::enviar,
+                    enabled = !cargando,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (creando) "Crear cuenta" else "Ingresar", fontWeight = FontWeight.Bold)
+                }
+
+                TextButton(onClick = { creando = !creando; error = null }) {
+                    Text(
+                        if (creando) "¿Ya tienes cuenta? Inicia sesión"
+                        else "¿No tienes cuenta? Créala aquí",
+                        color = NaranjaFH
+                    )
+                }
+
+                Text(vm.estadoNube, fontSize = 11.sp, color = GrisFH)
+            }
+        }
+    }
+}
+
+// Casilla desplegable con los cuatro roles.
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SelectorRol(elegido: Rol?, alElegir: (Rol) -> Unit) {
+    var abierto by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(expanded = abierto, onExpandedChange = { abierto = it }) {
+        OutlinedTextField(
+            value = elegido?.titulo ?: "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("¿Qué eres?") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = abierto) },
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = abierto, onDismissRequest = { abierto = false }) {
+            Rol.entries.forEach { rol ->
+                DropdownMenuItem(
+                    text = { Text(rol.titulo) },
+                    onClick = {
+                        alElegir(rol)
+                        abierto = false
+                    }
                 )
             }
         }

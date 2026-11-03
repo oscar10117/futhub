@@ -14,11 +14,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         JugadorEntity::class,       // versión 2
         TorneoEntity::class,        // versión 3 (versión 4: finalizado y campeon)
         TorneoEquipoEntity::class,  // versión 3
-        PartidoEntity::class,       // versión 3
+        PartidoEntity::class,       // versión 3 (versión 5: grupo)
         TarjetaEntity::class,       // versión 3
         FichaEntity::class          // versión 3
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class FutHubDatabase : RoomDatabase() {
@@ -28,6 +28,7 @@ abstract class FutHubDatabase : RoomDatabase() {
     abstract fun torneoDao(): TorneoDao
     abstract fun partidoDao(): PartidoDao
     abstract fun fichaDao(): FichaDao
+    abstract fun nubeDao(): NubeDao
 
     companion object {
         @Volatile
@@ -128,6 +129,14 @@ abstract class FutHubDatabase : RoomDatabase() {
             }
         }
 
+        // Pasa de la 4 a la 5: formato tipo Mundial. Los partidos que ya estaban
+        // quedan sin grupo (son de liga o eliminación).
+        private val MIGRACION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `partidos` ADD COLUMN `grupo` INTEGER")
+            }
+        }
+
         // Instalación nueva: Room crea todas las tablas y aquí se cargan los datos iniciales.
         private val alCrear = object : Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
@@ -142,7 +151,7 @@ abstract class FutHubDatabase : RoomDatabase() {
                     FutHubDatabase::class.java,
                     "futhub.db"
                 )
-                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4)
+                    .addMigrations(MIGRACION_1_2, MIGRACION_2_3, MIGRACION_3_4, MIGRACION_4_5)
                     .addCallback(alCrear)
                     .build()
                     .also { instancia = it }

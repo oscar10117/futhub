@@ -13,8 +13,9 @@ class FichasRepository(private val dao: FichaDao) {
     val fichas: Flow<List<FichaMedica>> =
         dao.observarFichas().map { lista -> lista.map { it.aModelo() } }
 
-    // El id de una ficha nueva lo pone Room (llega en 0).
-    suspend fun agregar(ficha: FichaMedica) = dao.insertar(ficha.aEntity())
+    // El id de una ficha nueva lo pone Room (llega en 0); se devuelve ya con su id.
+    suspend fun agregar(ficha: FichaMedica): FichaMedica =
+        ficha.copy(id = dao.insertar(ficha.aEntity()).toInt())
 
     suspend fun actualizar(ficha: FichaMedica) = dao.actualizar(ficha.aEntity())
 }

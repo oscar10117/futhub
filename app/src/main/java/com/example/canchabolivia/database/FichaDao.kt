@@ -13,7 +13,7 @@ interface FichaDao {
     fun observarFichas(): Flow<List<FichaEntity>>
 
     @Insert
-    suspend fun insertar(ficha: FichaEntity)
+    suspend fun insertar(ficha: FichaEntity): Long
 
     // El médico acepta/rechaza o evalúa: solo cambia el estado.
     @Update

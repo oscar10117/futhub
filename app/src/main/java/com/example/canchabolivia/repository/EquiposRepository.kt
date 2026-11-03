@@ -20,20 +20,25 @@ class EquiposRepository(private val dao: EquipoDao) {
         dao.observarJugadores().map { lista -> lista.map { it.aModelo() } }
 
     // Todo equipo nuevo arranca con dos jugadores de ejemplo (los ids los pone Room).
-    suspend fun agregar(nombre: String, sigla: String) = dao.crearConJugadores(
-        EquipoEntity(nombre = nombre, sigla = sigla),
-        listOf(
-            JugadorEntity(nombre = "Jugador 1", equipoId = 0, dorsal = 10),
-            JugadorEntity(nombre = "Jugador 2", equipoId = 0, dorsal = 7)
+    // Devuelve el equipo y su plantel ya con sus ids, para subirlos a la nube.
+    suspend fun agregar(nombre: String, sigla: String): Pair<Equipo, List<Jugador>> {
+        val equipoId = dao.crearConJugadores(
+            EquipoEntity(nombre = nombre, sigla = sigla),
+            listOf(
+                JugadorEntity(nombre = "Jugador 1", equipoId = 0, dorsal = 10),
+                JugadorEntity(nombre = "Jugador 2", equipoId = 0, dorsal = 7)
+            )
         )
-    )
+        return Equipo(equipoId, nombre, sigla) to dao.jugadoresDe(equipoId).map { it.aModelo() }
+    }
 
     suspend fun eliminar(equipoId: Int) = dao.eliminarEquipo(equipoId)
 
     suspend fun editar(equipo: Equipo) = dao.actualizarEquipo(equipo.aEntity())
 
-    // El id de un jugador nuevo lo pone Room (llega en 0).
-    suspend fun agregarJugador(jugador: Jugador) = dao.insertarJugador(jugador.aEntity())
+    // El id de un jugador nuevo lo pone Room (llega en 0); se devuelve ya con su id.
+    suspend fun agregarJugador(jugador: Jugador): Jugador =
+        jugador.copy(id = dao.insertarJugador(jugador.aEntity()).toInt())
 
     suspend fun editarJugador(jugador: Jugador) = dao.actualizarJugador(jugador.aEntity())
 

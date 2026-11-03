@@ -1,9 +1,19 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+    id("com.google.gms.google-services")
 }
+// Conexión a SQLite Cloud: se lee de sqlitecloud.properties (en la raíz del
+// proyecto, NO se sube a Git). Si no existe, la app usa los datos de ejemplo.
+val sqliteCloud = Properties().apply {
+    val archivo = rootProject.file("sqlitecloud.properties")
+    if (archivo.exists()) archivo.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.example.canchabolivia"
     compileSdk = 35
@@ -13,13 +23,19 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField("String", "SQLITECLOUD_URL", "\"${sqliteCloud.getProperty("url", "").trim()}\"")
+        buildConfigField("String", "SQLITECLOUD_APIKEY", "\"${sqliteCloud.getProperty("apikey", "").trim()}\"")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 }
 dependencies {
     implementation("com.android.volley:volley:1.2.1")
@@ -42,6 +58,11 @@ dependencies {
     implementation("androidx.room:room-ktx:2.7.1")
     implementation("androidx.room3:room3-common-jvm:3.0.3")
     ksp("androidx.room:room-compiler:2.7.1")
+
+    // Firebase: el BoM fija versiones compatibles entre sus librerías
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-auth")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")

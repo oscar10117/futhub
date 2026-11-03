@@ -3,3 +3,6 @@
 local.properties
 **/build/
 *.iml
+
+# Datos de conexión a SQLite Cloud (API key)
+sqlitecloud.properties

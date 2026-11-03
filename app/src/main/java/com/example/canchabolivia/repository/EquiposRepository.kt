@@ -5,6 +5,7 @@ import com.example.canchabolivia.Jugador
 import com.example.canchabolivia.database.EquipoDao
 import com.example.canchabolivia.database.EquipoEntity
 import com.example.canchabolivia.database.JugadorEntity
+import com.example.canchabolivia.mapper.aEntity
 import com.example.canchabolivia.mapper.aModelo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -28,4 +29,13 @@ class EquiposRepository(private val dao: EquipoDao) {
     )
 
     suspend fun eliminar(equipoId: Int) = dao.eliminarEquipo(equipoId)
+
+    suspend fun editar(equipo: Equipo) = dao.actualizarEquipo(equipo.aEntity())
+
+    // El id de un jugador nuevo lo pone Room (llega en 0).
+    suspend fun agregarJugador(jugador: Jugador) = dao.insertarJugador(jugador.aEntity())
+
+    suspend fun editarJugador(jugador: Jugador) = dao.actualizarJugador(jugador.aEntity())
+
+    suspend fun quitarJugador(jugadorId: Int) = dao.eliminarJugador(jugadorId)
 }

@@ -8,8 +8,13 @@ import com.example.canchabolivia.database.TarjetaEntity
 import com.example.canchabolivia.database.TorneoEntity
 
 // Entity (Room) a modelo de la app, y al revés para lo que la app modifica.
-fun TorneoEntity.aModelo(equipoIds: List<Int>) =
-    Torneo(nombre = nombre, formato = formato, equipoIds = equipoIds.toMutableList())
+fun TorneoEntity.aModelo(equipoIds: List<Int>) = Torneo(
+    nombre = nombre,
+    formato = formato,
+    equipoIds = equipoIds.toMutableList(),
+    finalizado = finalizado,
+    campeon = campeon
+)
 
 fun PartidoEntity.aModelo() = Partido(
     id = id,

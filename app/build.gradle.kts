@@ -38,6 +38,7 @@ dependencies {
     // Room: caché local del último clima (Entity + DAO + Database)
     implementation("androidx.room:room-runtime:2.7.1")
     implementation("androidx.room:room-ktx:2.7.1")
+    implementation("androidx.room3:room3-common-jvm:3.0.3")
     ksp("androidx.room:room-compiler:2.7.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

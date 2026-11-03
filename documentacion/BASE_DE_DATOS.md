@@ -12,7 +12,7 @@ hecha con Room). Antes todo vivía en memoria y se perdía al cerrar la app; aho
 |---|---|---|
 | `equipos` | Nombre y sigla de cada equipo | Organizador (agregar / eliminar) |
 | `jugadores` | Nombre, dorsal y equipo de cada jugador | Todos |
-| `torneo` | Nombre del torneo y formato (Liga / Eliminación directa) | Organizador |
+| `torneo` | Nombre, formato (Liga / Eliminación directa), si está terminado y su campeón | Organizador |
 | `torneo_equipos` | Qué equipos están inscritos en el torneo y en qué orden | Organizador |
 | `partidos` | Fixture, rondas, goles, ganador por penales y si está cancelado | Organizador y árbitro |
 | `tarjetas` | Tarjetas amarillas y rojas con el minuto | Árbitro |
@@ -20,7 +20,9 @@ hecha con Room). Antes todo vivía en memoria y se perdía al cerrar la app; aho
 | `clima` | Última lectura del clima, para verla sin internet | Todos |
 
 **Ejemplos de lo que ahora se mantiene al cerrar la app:**
-- Un equipo nuevo que agregó el organizador (o uno que borró).
+- Un equipo nuevo que agregó el organizador (o uno que borró o editó).
+- Los jugadores que el organizador agregó, editó (nombre y dorsal) o quitó de un equipo.
+- Un torneo terminado y su campeón.
 - El fixture generado y los resultados cargados.
 - Las tarjetas que puso el árbitro.
 - La reserva del jugador y si el médico lo dejó **apto** para jugar.
@@ -53,6 +55,16 @@ Las tablas están enlazadas con **claves foráneas con borrado en cascada (CASCA
 Por eso, al **borrar un equipo**, la base borra sola todo lo que dependía de él:
 sus jugadores, su inscripción en el torneo, sus partidos, las tarjetas de esos
 partidos y las fichas médicas de sus jugadores. No quedan datos "huérfanos".
+Lo mismo al **quitar un jugador**: se borran sus fichas médicas y sus tarjetas.
+
+## Terminar un torneo
+
+El organizador puede **terminar el torneo** desde la pestaña Torneo:
+- Queda guardado el **campeón**: el ganador de la final, o en liga el primero de la tabla
+  (aunque falten partidos). En eliminación directa sin final definida termina sin campeón.
+- El torneo queda en **solo lectura**: nadie puede cargar resultados, tarjetas ni avanzar rondas.
+- Después aparece **Empezar nuevo torneo**: borra el fixture, los resultados y las tarjetas,
+  y deja configurar otro torneo. Los equipos, jugadores y fichas médicas se mantienen.
 
 ## Estructura del código
 
@@ -64,7 +76,7 @@ database/     Entity (tablas), DAO (consultas) y FutHubDatabase
   │  PartidoEntity, TarjetaEntity, FichaEntity, ClimaEntity
   ├─ EquipoDao, TorneoDao, PartidoDao, FichaDao, ClimaDao
   ├─ DatosIniciales     datos de ejemplo de la primera vez
-  └─ FutHubDatabase     versión 3 + migraciones
+  └─ FutHubDatabase     versión 4 + migraciones
 mapper/       Convierte Entity <-> modelo de la app (EquipoMapper, TorneoMapper, FichaMapper)
 repository/   Único punto de acceso a la base (EquiposRepository, TorneoRepository, FichasRepository)
 CanchaViewModel   Escribe en los repositorios y escucha los cambios (Flow) para la UI
@@ -80,12 +92,15 @@ repositorio → Room actualiza la tabla → Room avisa (Flow) → la pantalla se
 | 1 | `clima` |
 | 2 | `equipos`, `jugadores` |
 | 3 | `torneo`, `torneo_equipos`, `partidos`, `tarjetas`, `fichas` |
+| 4 | Columnas `finalizado` y `campeon` en `torneo` (terminar torneo) |
 
-Las migraciones `1 → 2` y `2 → 3` crean las tablas nuevas **sin borrar lo que ya
+Las migraciones `1 → 2`, `2 → 3` y `3 → 4` crean las tablas nuevas **sin borrar lo que ya
 estaba guardado**, así que actualizar la app no hace perder datos.
 
 ## Cómo probarlo
 
-1. Entrar como organizador (`admin@futhub.com` / `123`), agregar un equipo y generar el fixture.
-2. Cargar un resultado y, como árbitro, poner una tarjeta.
-3. Cerrar la app por completo y volver a abrirla: todo sigue ahí.
+1. Entrar como organizador (`admin@futhub.com` / `123`), agregar un equipo, agregarle un
+   jugador y editar su dorsal.
+2. Generar el fixture, cargar un resultado y, como árbitro, poner una tarjeta.
+3. Como organizador, terminar el torneo.
+4. Cerrar la app por completo y volver a abrirla: todo sigue ahí (y el torneo sigue terminado).

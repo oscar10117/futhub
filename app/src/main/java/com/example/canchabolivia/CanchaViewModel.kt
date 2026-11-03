@@ -74,6 +74,35 @@ class CanchaViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { equiposRepo.eliminar(equipoId) }
     }
 
+    // Devuelve el error a mostrar, o null si se guardó (como iniciarSesion).
+    fun editarEquipo(equipoId: Int, nombre: String, sigla: String): String? {
+        if (nombre.isBlank() || sigla.isBlank()) return "Completa nombre y sigla"
+        viewModelScope.launch { equiposRepo.editar(Equipo(equipoId, nombre.trim(), sigla.trim().uppercase())) }
+        return null
+    }
+
+    // --- PLANTEL (el organizador agrega, edita y quita jugadores) ---
+    // jugadorId null = jugador nuevo. Devuelve el error a mostrar, o null si se guardó.
+    fun guardarJugador(equipoId: Int, jugadorId: Int?, nombre: String, dorsalTexto: String): String? {
+        val dorsal = dorsalTexto.trim().toIntOrNull()
+        if (nombre.isBlank()) return "Escribe el nombre del jugador"
+        if (dorsal == null || dorsal !in 1..99) return "El dorsal debe ser un número del 1 al 99"
+        if (jugadores.any { it.equipoId == equipoId && it.dorsal == dorsal && it.id != jugadorId }) {
+            return "El dorsal $dorsal ya lo usa otro jugador del equipo"
+        }
+
+        val jugador = Jugador(jugadorId ?: 0, nombre.trim(), equipoId, dorsal)
+        viewModelScope.launch {
+            if (jugadorId == null) equiposRepo.agregarJugador(jugador) else equiposRepo.editarJugador(jugador)
+        }
+        return null
+    }
+
+    // Sus fichas médicas y tarjetas se borran con él (CASCADE en la base).
+    fun quitarJugador(jugadorId: Int) {
+        viewModelScope.launch { equiposRepo.quitarJugador(jugadorId) }
+    }
+
     fun equipo(id: Int): Equipo = equipos.firstOrNull { it.id == id } ?: Equipo(id, "Equipo eliminado", "—")
     fun jugador(id: Int): Jugador = jugadores.firstOrNull { it.id == id } ?: Jugador(id, "Jugador eliminado", -1, 0)
 
@@ -125,11 +154,43 @@ class CanchaViewModel(app: Application) : AndroidViewModel(app) {
     var partidos by mutableStateOf(listOf<Partido>())
         private set
 
+    // Un torneo terminado queda congelado: las funciones que cambian el
+    // fixture, resultados o tarjetas no hacen nada (la pantalla además
+    // esconde esos botones).
     fun guardarTorneo(nombre: String, formato: Formato, equipoIds: List<Int>) {
+        if (torneo.finalizado) return
         viewModelScope.launch { torneoRepo.guardarTorneo(nombre, formato, equipoIds) }
     }
 
+    // Cierra el torneo y deja guardado al campeón. Si todavía faltaban
+    // partidos: en liga gana el que va primero en la tabla; en eliminación
+    // directa sin final definida, termina sin campeón.
+    fun terminarTorneo(): String {
+        if (torneo.finalizado) return "El torneo ya está terminado"
+        if (partidos.isEmpty()) return "Primero genera el fixture"
+
+        val campeon = campeonAlTerminar()
+        viewModelScope.launch { torneoRepo.terminar(campeon) }
+        return if (campeon != null) "Torneo terminado · Campeón: $campeon" else "Torneo terminado sin campeón"
+    }
+
+    // Campeón que quedaría si se termina ahora (para el aviso de confirmación).
+    fun campeonAlTerminar(): String? = campeon() ?: campeonPorTabla()
+
+    private fun campeonPorTabla(): String? {
+        if (torneo.formato != Formato.LIGA || partidos.none { it.finalizado() }) return null
+        return MotorTorneo.tabla(torneo, partidos).firstOrNull()?.let { equipo(it.equipoId).nombre }
+    }
+
+    // Borra el fixture del torneo terminado y lo reabre para configurarlo de nuevo.
+    fun empezarNuevoTorneo(): String {
+        if (!torneo.finalizado) return "Primero termina el torneo actual"
+        viewModelScope.launch { torneoRepo.empezarNuevo() }
+        return "Nuevo torneo listo para configurar"
+    }
+
     fun generar(sortear: Boolean): String {
+        if (torneo.finalizado) return "El torneo ya terminó"
         val ids = if (sortear) torneo.equipoIds.shuffled() else torneo.equipoIds
 
         val fixture = when (torneo.formato) {
@@ -176,6 +237,7 @@ class CanchaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun cancelarPendientes(): String {
+        if (torneo.finalizado) return "El torneo ya terminó"
         val pendientes = partidos.filter { it.visitanteId != null && !it.finalizado() && !it.cancelado }
         if (pendientes.isEmpty()) return "No hay partidos pendientes para cancelar"
         actualizarPartidos(pendientes.map { it.copy(cancelado = true) })
@@ -184,7 +246,7 @@ class CanchaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun actualizarPartidos(cambiados: List<Partido>) {
-        if (cambiados.isEmpty()) return
+        if (cambiados.isEmpty() || torneo.finalizado) return
         viewModelScope.launch { torneoRepo.actualizarPartidos(cambiados) }
     }
 
@@ -193,6 +255,7 @@ class CanchaViewModel(app: Application) : AndroidViewModel(app) {
     // última ronda todavía no tiene resultado (o quedó empatado sin
     // penales), avisa en vez de avanzar con datos incompletos.
     fun avanzar(): String {
+        if (torneo.finalizado) return "El torneo ya terminó"
         if (torneo.formato != Formato.ELIMINACION) return "Esta acción es solo para eliminación directa"
         if (partidos.isEmpty()) return "Primero genera el fixture"
 
@@ -217,8 +280,10 @@ class CanchaViewModel(app: Application) : AndroidViewModel(app) {
 
     // Liga: hay campeón cuando se jugaron todos los partidos (el primero
     // de la tabla). Eliminación: hay campeón cuando la última ronda quedó
-    // en un solo partido ya definido.
+    // en un solo partido ya definido. Si el torneo se terminó, manda el
+    // campeón que quedó guardado.
     fun campeon(): String? {
+        if (torneo.finalizado) return torneo.campeon
         if (partidos.isEmpty()) return null
 
         return when (torneo.formato) {
@@ -241,6 +306,7 @@ class CanchaViewModel(app: Application) : AndroidViewModel(app) {
 
     // El id de la tarjeta nueva lo pone Room (llega en 0).
     fun agregarTarjeta(partidoId: Int, jugadorId: Int, tipo: TipoTarjeta, minuto: Int) {
+        if (torneo.finalizado) return
         viewModelScope.launch { torneoRepo.agregarTarjeta(Tarjeta(0, partidoId, jugadorId, tipo, minuto)) }
     }
 

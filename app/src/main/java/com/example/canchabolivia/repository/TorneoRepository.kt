@@ -35,6 +35,10 @@ class TorneoRepository(
     suspend fun guardarTorneo(nombre: String, formato: Formato, equipoIds: List<Int>) =
         torneoDao.guardar(TorneoEntity(nombre = nombre, formato = formato), equipoIds)
 
+    suspend fun terminar(campeon: String?) = torneoDao.terminar(campeon)
+
+    suspend fun empezarNuevo() = torneoDao.empezarNuevo()
+
     suspend fun reemplazarFixture(partidos: List<Partido>) =
         partidoDao.reemplazarFixture(partidos.map { it.aEntity() })
 

@@ -99,7 +99,7 @@ private fun pestanasPara(
 
     Rol.ORGANIZADOR -> listOf(
         PestanaNav("Inicio", "◉", "El torneo en tus manos") { Inicio(vm, abrir) },
-        PestanaNav("Equipos", "▤", "Agrega o elimina equipos") { EquiposAdmin(vm, avisar) },
+        PestanaNav("Equipos", "▤", "Equipos y planteles") { EquiposAdmin(vm, avisar) },
         PestanaNav("Torneo", "☆", "Formato, fixture y tabla") { Torneos(vm, avisar) }
     )
 }
@@ -450,7 +450,11 @@ private fun Inicio(
             )
 
             Text(
-                "${vm.partidos.size} partidos en el fixture"
+                if (vm.torneo.finalizado) {
+                    "Terminado · " + (vm.campeon()?.let { "Campeón: $it" } ?: "sin campeón")
+                } else {
+                    "${vm.partidos.size} partidos en el fixture"
+                }
             )
 
             OutlinedButton(
@@ -740,7 +744,7 @@ private fun EquiposAdmin(
 
     Titulo(
         "Equipos",
-        "Agrega o elimina equipos del padrón general"
+        "Agrega, edita o elimina equipos y sus jugadores"
     )
 
     Panel {
@@ -810,21 +814,33 @@ private fun EquiposAdmin(
 
     val equipoActual = vm.equipo(equipoId)
 
+    // Diálogos abiertos: editar equipo, agregar/editar jugador y confirmar quitar.
+    var editandoEquipo by remember { mutableStateOf(false) }
+    var agregandoJugador by remember { mutableStateOf(false) }
+    var jugadorEditando by remember { mutableStateOf<Jugador?>(null) }
+    var jugadorAQuitar by remember { mutableStateOf<Jugador?>(null) }
+
     Panel {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Titulo(equipoActual.nombre)
+            Titulo(equipoActual.nombre, equipoActual.sigla)
 
-            TextButton(
-                onClick = {
-                    vm.eliminarEquipo(equipoActual.id)
-                    avisar("Equipo eliminado")
+            Row {
+                TextButton(onClick = { editandoEquipo = true }) {
+                    Text("Editar")
                 }
-            ) {
-                Text("Eliminar", color = RojoFH)
+
+                TextButton(
+                    onClick = {
+                        vm.eliminarEquipo(equipoActual.id)
+                        avisar("Equipo eliminado")
+                    }
+                ) {
+                    Text("Eliminar", color = RojoFH)
+                }
             }
         }
 
@@ -833,18 +849,52 @@ private fun EquiposAdmin(
             equipoId in vm.torneo.equipoIds
         )
 
-        vm.jugadores.filter { it.equipoId == equipoId }.forEach { jugador ->
+        val plantel = vm.jugadores.filter { it.equipoId == equipoId }
+
+        if (plantel.isEmpty()) {
+            Text("Este equipo todavía no tiene jugadores.", fontSize = 13.sp, color = GrisFH)
+        }
+
+        plantel.forEach { jugador ->
             HorizontalDivider(color = GrisClaroFH)
 
-            Text(
-                "${jugador.dorsal.toString().padStart(2, '0')}   ${jugador.nombre}",
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        "${jugador.dorsal.toString().padStart(2, '0')}   ${jugador.nombre}",
+                        fontWeight = FontWeight.Bold
+                    )
 
-            Estado(
-                if (vm.habilitado(jugador.id)) "Habilitado" else "No habilitado",
-                vm.habilitado(jugador.id)
-            )
+                    Estado(
+                        if (vm.habilitado(jugador.id)) "Habilitado" else "No habilitado",
+                        vm.habilitado(jugador.id)
+                    )
+                }
+
+                TextButton(onClick = { jugadorEditando = jugador }) {
+                    Text("Editar")
+                }
+
+                TextButton(onClick = { jugadorAQuitar = jugador }) {
+                    Text("Quitar", color = RojoFH)
+                }
+            }
+        }
+
+        HorizontalDivider(color = GrisClaroFH)
+
+        OutlinedButton(
+            onClick = { agregandoJugador = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Agregar jugador")
         }
     }
 
@@ -852,6 +902,152 @@ private fun EquiposAdmin(
         "Para elegir qué equipos juegan este torneo y el formato, entra a Torneo → Configurar.",
         fontSize = 12.sp,
         color = GrisFH
+    )
+
+    if (editandoEquipo) {
+        FormularioDialogo(
+            titulo = "Editar equipo",
+            etiqueta1 = "Nombre",
+            valor1 = equipoActual.nombre,
+            etiqueta2 = "Sigla",
+            valor2 = equipoActual.sigla,
+            cerrar = { editandoEquipo = false },
+            alGuardar = { nombre, sigla ->
+                vm.editarEquipo(equipoActual.id, nombre, sigla).also { if (it == null) avisar("Equipo actualizado") }
+            }
+        )
+    }
+
+    if (agregandoJugador) {
+        FormularioDialogo(
+            titulo = "Agregar jugador a ${equipoActual.sigla}",
+            etiqueta1 = "Nombre",
+            valor1 = "",
+            etiqueta2 = "Dorsal",
+            valor2 = "",
+            numerico2 = true,
+            cerrar = { agregandoJugador = false },
+            alGuardar = { nombre, dorsal ->
+                vm.guardarJugador(equipoActual.id, null, nombre, dorsal).also { if (it == null) avisar("Jugador agregado") }
+            }
+        )
+    }
+
+    jugadorEditando?.let { jugador ->
+        FormularioDialogo(
+            titulo = "Editar jugador",
+            etiqueta1 = "Nombre",
+            valor1 = jugador.nombre,
+            etiqueta2 = "Dorsal",
+            valor2 = jugador.dorsal.toString(),
+            numerico2 = true,
+            cerrar = { jugadorEditando = null },
+            alGuardar = { nombre, dorsal ->
+                vm.guardarJugador(jugador.equipoId, jugador.id, nombre, dorsal).also { if (it == null) avisar("Jugador actualizado") }
+            }
+        )
+    }
+
+    jugadorAQuitar?.let { jugador ->
+        ConfirmarDialogo(
+            titulo = "Quitar a ${jugador.nombre}",
+            mensaje = "También se borrarán sus fichas médicas y sus tarjetas. Esta acción no se puede deshacer.",
+            textoConfirmar = "Quitar",
+            cerrar = { jugadorAQuitar = null },
+            confirmar = {
+                vm.quitarJugador(jugador.id)
+                avisar("Jugador quitado del equipo")
+            }
+        )
+    }
+}
+
+// Diálogo de dos campos (nombre + sigla, o nombre + dorsal). alGuardar
+// devuelve el error a mostrar, o null si se guardó y el diálogo se cierra.
+@Composable
+private fun FormularioDialogo(
+    titulo: String,
+    etiqueta1: String,
+    valor1: String,
+    etiqueta2: String,
+    valor2: String,
+    numerico2: Boolean = false,
+    cerrar: () -> Unit,
+    alGuardar: (String, String) -> String?
+) {
+    var campo1 by rememberSaveable { mutableStateOf(valor1) }
+    var campo2 by rememberSaveable { mutableStateOf(valor2) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = cerrar,
+        title = { Text(titulo) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = campo1,
+                    onValueChange = { campo1 = it; error = null },
+                    label = { Text(etiqueta1) },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = campo2,
+                    onValueChange = { campo2 = it; error = null },
+                    label = { Text(etiqueta2) },
+                    singleLine = true,
+                    keyboardOptions = if (numerico2) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default
+                )
+                error?.let {
+                    Text(it, color = RojoFH, fontSize = 13.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    error = alGuardar(campo1, campo2)
+                    if (error == null) cerrar()
+                }
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = cerrar) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ConfirmarDialogo(
+    titulo: String,
+    mensaje: String,
+    textoConfirmar: String,
+    cerrar: () -> Unit,
+    confirmar: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = cerrar,
+        title = { Text(titulo) },
+        text = { Text(mensaje) },
+        confirmButton = {
+            Button(
+                onClick = {
+                    confirmar()
+                    cerrar()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = RojoFH, contentColor = BlancoFH)
+            ) {
+                Text(textoConfirmar)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = cerrar) {
+                Text("Cancelar")
+            }
+        }
     )
 }
 
@@ -874,6 +1070,19 @@ private fun PartidosArbitro(
             Text("Todavía no hay partidos programados por el organizador.")
         }
         return
+    }
+
+    // Torneo terminado: el árbitro solo consulta, ya no carga nada.
+    val terminado = vm.torneo.finalizado
+    if (terminado) {
+        Panel {
+            Estado("Torneo terminado", false)
+            Text(
+                vm.campeon()?.let { "Campeón: $it" } ?: "El torneo terminó sin campeón.",
+                fontWeight = FontWeight.Bold
+            )
+            Text("Ya no se pueden cargar resultados ni tarjetas.", fontSize = 13.sp)
+        }
     }
 
     vm.partidos.groupBy { it.ronda }.forEach { (ronda, partidos) ->
@@ -906,7 +1115,7 @@ private fun PartidosArbitro(
                     )
                 }
 
-                if (partido.visitanteId != null && !partido.cancelado) {
+                if (partido.visitanteId != null && !partido.cancelado && !terminado) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -963,6 +1172,12 @@ private fun Torneos(
         mutableStateOf<Partido?>(null)
     }
 
+    var confirmarTerminar by remember { mutableStateOf(false) }
+    var confirmarNuevo by remember { mutableStateOf(false) }
+
+    // Torneo terminado = solo lectura para todos (no se cargan resultados).
+    val terminado = vm.torneo.finalizado
+
     val climaVm: ClimaViewModel = viewModel()
     val clima = climaVm.estado.collectAsState().value.clima
     val climaNoApto = clima?.noApto == true
@@ -991,6 +1206,10 @@ private fun Torneos(
             vm.torneo.equipoIds.joinToString(" · ") { vm.equipo(it).sigla },
             fontSize = 13.sp
         )
+
+        if (terminado) {
+            Estado("Torneo terminado", false)
+        }
 
         if (vm.rol == Rol.ORGANIZADOR && vm.partidos.isEmpty()) {
             OutlinedButton(
@@ -1021,7 +1240,7 @@ private fun Torneos(
             )
         }
 
-        if (vm.rol == Rol.ORGANIZADOR && vm.torneo.formato == Formato.ELIMINACION && vm.partidos.isNotEmpty() && vm.campeon() == null) {
+        if (vm.rol == Rol.ORGANIZADOR && !terminado && vm.torneo.formato == Formato.ELIMINACION && vm.partidos.isNotEmpty() && vm.campeon() == null) {
             Button(
                 onClick = { avisar(vm.avanzar()) }
             ) {
@@ -1037,9 +1256,60 @@ private fun Torneos(
                 color = NaranjaFH
             )
         }
+
+        if (terminado && vm.campeon() == null) {
+            Text("El torneo terminó sin campeón.", fontSize = 13.sp)
+        }
+
+        // Cierre del torneo (organizador): terminar congela resultados y deja
+        // al campeón; después se puede empezar uno nuevo desde cero.
+        if (vm.rol == Rol.ORGANIZADOR && vm.partidos.isNotEmpty()) {
+            if (terminado) {
+                Button(
+                    onClick = { confirmarNuevo = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Empezar nuevo torneo")
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { confirmarTerminar = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Terminar torneo", color = RojoFH)
+                }
+            }
+        }
     }
 
-    if (vm.rol == Rol.ORGANIZADOR && climaNoApto && clima != null) {
+    if (confirmarTerminar) {
+        val faltan = vm.partidos.count { it.visitanteId != null && !it.finalizado() }
+        val campeon = vm.campeonAlTerminar()
+        ConfirmarDialogo(
+            titulo = "Terminar ${vm.torneo.nombre}",
+            mensaje = buildString {
+                if (faltan > 0) append("Todavía faltan $faltan partidos por jugar. ")
+                append(if (campeon != null) "El campeón será $campeon. " else "El torneo terminará sin campeón. ")
+                append("Después ya no se podrán cargar resultados ni tarjetas.")
+            },
+            textoConfirmar = "Terminar",
+            cerrar = { confirmarTerminar = false },
+            confirmar = { avisar(vm.terminarTorneo()) }
+        )
+    }
+
+    if (confirmarNuevo) {
+        ConfirmarDialogo(
+            titulo = "Empezar nuevo torneo",
+            mensaje = "Se borrarán el fixture, los resultados y las tarjetas del torneo anterior. " +
+                    "Los equipos, jugadores y fichas médicas se mantienen.",
+            textoConfirmar = "Empezar",
+            cerrar = { confirmarNuevo = false },
+            confirmar = { avisar(vm.empezarNuevoTorneo()) }
+        )
+    }
+
+    if (vm.rol == Rol.ORGANIZADOR && !terminado && climaNoApto && clima != null) {
         val hayPendientes = vm.partidos.any { it.visitanteId != null && !it.finalizado() && !it.cancelado }
         Panel {
             Text(
@@ -1142,7 +1412,7 @@ private fun Torneos(
 
                 // Solo el organizador edita resultados desde aquí; el árbitro
                 // lo hace desde su propia pestaña de Partidos.
-                if (vm.rol == Rol.ORGANIZADOR && partido.visitanteId != null) {
+                if (vm.rol == Rol.ORGANIZADOR && !terminado && partido.visitanteId != null) {
                     if (partido.cancelado) {
                         OutlinedButton(onClick = { vm.reprogramarPartido(partido.id) }) {
                             Text("Reprogramar")

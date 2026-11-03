@@ -33,4 +33,21 @@ abstract class TorneoDao {
         borrarInscritos(torneo.id)
         insertarInscritos(equipoIds.mapIndexed { i, id -> TorneoEquipoEntity(torneo.id, id, i) })
     }
+
+    @Query("UPDATE torneo SET finalizado = 1, campeon = :campeon WHERE id = 1")
+    abstract suspend fun terminar(campeon: String?)
+
+    @Query("DELETE FROM partidos")
+    protected abstract suspend fun borrarPartidos()
+
+    @Query("UPDATE torneo SET finalizado = 0, campeon = NULL WHERE id = 1")
+    protected abstract suspend fun reabrir()
+
+    // Nuevo torneo: se borra el fixture (las tarjetas se van por CASCADE) y se
+    // reabre, conservando nombre, formato e inscritos para reconfigurarlos.
+    @Transaction
+    open suspend fun empezarNuevo() {
+        borrarPartidos()
+        reabrir()
+    }
 }

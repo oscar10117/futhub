@@ -70,10 +70,14 @@ data class FichaMedica(
     val estado: EstadoFicha = EstadoFicha.PENDIENTE
 )
 
+// finalizado: el organizador lo cerró; ya no se cargan resultados ni tarjetas.
+// campeon: nombre del campeón guardado al terminar (null si terminó sin campeón).
 data class Torneo(
     var nombre: String,
     var formato: Formato,
-    var equipoIds: MutableList<Int>
+    var equipoIds: MutableList<Int>,
+    val finalizado: Boolean = false,
+    val campeon: String? = null
 )
 
 // Igual que FichaMedica: los goles son `val`, se actualizan con copy() para

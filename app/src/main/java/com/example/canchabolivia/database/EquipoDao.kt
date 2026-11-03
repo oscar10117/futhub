@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -32,4 +33,18 @@ abstract class EquipoDao {
     // Los jugadores del equipo se borran solos por el ON DELETE CASCADE.
     @Query("DELETE FROM equipos WHERE id = :id")
     abstract suspend fun eliminarEquipo(id: Int)
+
+    @Update
+    abstract suspend fun actualizarEquipo(equipo: EquipoEntity)
+
+    // --- Plantel (el organizador agrega, edita y quita jugadores) ---
+    @Insert
+    abstract suspend fun insertarJugador(jugador: JugadorEntity)
+
+    @Update
+    abstract suspend fun actualizarJugador(jugador: JugadorEntity)
+
+    // Sus fichas médicas y tarjetas se borran solas por el ON DELETE CASCADE.
+    @Query("DELETE FROM jugadores WHERE id = :id")
+    abstract suspend fun eliminarJugador(id: Int)
 }

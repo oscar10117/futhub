@@ -1,5 +1,7 @@
 // cargar_datos: todo lo que la app necesita al abrirse, en una sola llamada.
 // Recibe: nada   Devuelve: { equipos, jugadores, fichas, torneo, partidos, tarjetas }
+// [GUIA DOCENTE - EDGE FUNCTION] Consulta las tablas en SQLite Cloud y devuelve JSON.
+// Para una tabla nueva, anadir SELECT y campo en la respuesta, DTO y mapper.
 const filas = (resultado) => resultado.map((fila) => ({ ...fila }));
 
 const equipos   = await connection.sql`SELECT id, nombre, sigla FROM equipos ORDER BY id`;

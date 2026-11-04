@@ -5,6 +5,8 @@ import com.google.gson.annotations.SerializedName
 // Copia fiel del JSON que devuelven las Edge Functions (columnas de las tablas).
 // Todo es nullable: si falta un dato, el mapper descarta esa fila en vez de romper la app.
 
+// [GUIA DOCENTE - DTO NUBE] Datos tal como llegan desde las Edge Functions.
+// Para una tabla/campo nuevo, ajustar el DTO y NubeMapper.
 data class EquipoDto(
     @SerializedName("id") val id: Int?,
     @SerializedName("nombre") val nombre: String?,

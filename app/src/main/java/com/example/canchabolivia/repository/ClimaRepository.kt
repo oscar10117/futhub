@@ -9,6 +9,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+// [GUIA DOCENTE - REPOSITORY 1] Une la API de clima con su cache Room.
+// El ViewModel pide actualizar(); el Repository consulta HTTP y guarda en DAO.
 class ClimaRepository(
     private val api: OpenMeteoApi,
     private val dao: ClimaDao

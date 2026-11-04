@@ -19,6 +19,8 @@ data class ClimaUiState(
     val error: String? = null
 )
 
+// [GUIA DOCENTE - VIEWMODEL CLIMA] Orquesta Repository -> estado -> interfaz Compose.
+// Para otra API, exponer un StateFlow con carga, datos y errores.
 class ClimaViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repositorio = ClimaRepository(

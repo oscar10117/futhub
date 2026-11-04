@@ -1577,7 +1577,12 @@ private fun LoginPantalla(
                     )
                 }
 
+                // GUIA DOCENTE [MEJORA]: boton real para repetir el GET de SQLite Cloud.
+                // Muestra estado de conexion y sirve para demostrar fallos de red o configuracion.
                 Text(vm.estadoNube, fontSize = 11.sp, color = GrisFH)
+                TextButton(onClick = vm::recargarDesdeNube) {
+                    Text("Comprobar conexion SQLite Cloud", color = NaranjaFH, fontSize = 12.sp)
+                }
             }
         }
     }

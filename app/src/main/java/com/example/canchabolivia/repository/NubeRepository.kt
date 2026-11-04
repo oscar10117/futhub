@@ -19,6 +19,8 @@ import kotlinx.coroutines.CancellationException
 // Única puerta hacia SQLite Cloud. Cada método = una Edge Function
 // (ver la carpeta sqlitecloud/funciones). Si cambias el nombre de una
 // función en el panel, solo hay que cambiarlo aquí.
+// [GUIA DOCENTE - REPOSITORY 2] Punto central de operaciones con SQLite Cloud.
+// Nueva tabla u operacion: crear Edge Function y agregar un metodo aqui.
 class NubeRepository(private val api: FutHubNubeApi) {
 
     private val gson = Gson()
@@ -52,6 +54,8 @@ class NubeRepository(private val api: FutHubNubeApi) {
     }
 
     // Las funciones responden { "data": ... }; aquí se saca lo que va dentro.
+    // [GUIA DOCENTE - LLAMADA REMOTA] Unifica como se ejecuta cada Edge Function.
+    // Devuelve JSON para que los DTO/mappers lo conviertan en objetos Kotlin.
     private suspend fun llamar(funcion: String, cuerpo: Map<String, Any?> = emptyMap()): JsonElement {
         var json = api.llamar(funcion, cuerpo)
         while (json.isJsonObject && json.asJsonObject.has("data")) {

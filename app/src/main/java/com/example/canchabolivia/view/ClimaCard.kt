@@ -59,6 +59,8 @@ private fun Aptitud.icono(): String = when (this) {
 // Pantalla: tarjeta del clima en la cancha (datos de Open-Meteo vía Retrofit,
 // con la última lectura guardada en Room para verla sin internet).
 @Composable
+// [GUIA DOCENTE - UI COMPOSE] La pantalla OBSERVA el ViewModel; no llama HTTP directamente.
+// Una API nueva tendria su propio estado en ViewModel y su Composable.
 fun ClimaCard(vm: ClimaViewModel = viewModel()) {
     val estado by vm.estado.collectAsState()
 

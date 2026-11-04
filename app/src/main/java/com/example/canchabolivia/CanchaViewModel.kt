@@ -25,6 +25,9 @@ class CanchaViewModel : ViewModel() {
     // Firebase guarda el correo y la contraseña. El rol elegido al crear la
     // cuenta se guarda en su displayName, así queda ligado a la cuenta.
     // Las respuestas llegan por alTerminar: null si salió bien, o el error.
+    // [GUIA DOCENTE - FIREBASE] Aqui empieza el login de Firebase Authentication.
+    // Crear cuenta, iniciarSesion y cerrarSesion estan en este mismo ViewModel.
+    // El displayName del cliente NO es una autorizacion segura de roles en produccion.
     private val auth = FirebaseAuth.getInstance()
 
     // Si ya había una sesión abierta, se entra directo sin pedir la clave.
@@ -101,6 +104,8 @@ class CanchaViewModel : ViewModel() {
     // Las listas de abajo son el punto de partida (y lo que se usa sin internet).
     // Al abrir la app se reemplazan con lo que hay en la nube, y cada cambio
     // se sube con la Edge Function que corresponde (ver NubeRepository).
+    // [GUIA DOCENTE - SQLITE CLOUD] Aqui se construye el Repository remoto.
+    // La URL y clave salen de sqlitecloud.properties y BuildConfig; sin datos, usa ejemplos.
     private val nube: NubeRepository? =
         if (FutHubNubeApi.configurada) NubeRepository(FutHubNubeApi.instancia) else null
 
@@ -124,8 +129,15 @@ class CanchaViewModel : ViewModel() {
 
     // Trae todo de SQLite Cloud. Se asignan los campos internos (_torneo,
     // _partidos) para no volver a subir lo que se acaba de bajar.
+    // [GUIA DOCENTE - SINCRONIZACION] Aqui se leen los datos de la nube a la app.
+    // MEJORA: este metodo tambien responde al boton Comprobar conexion del login.
     fun recargarDesdeNube() {
-        val repo = nube ?: return
+        val repo = nube ?: run {
+            estadoNube = "Base de datos: sin configurar (datos de ejemplo)"
+            return
+        }
+        // GUIA DOCENTE [MEJORA]: cada pulsacion muestra que se esta comprobando la nube.
+        estadoNube = "Base de datos: comprobando conexion..."
         viewModelScope.launch {
             repo.cargarDatos()
                 .onSuccess { datos ->

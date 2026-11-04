@@ -12,8 +12,12 @@ import retrofit2.http.Path
 // Edge Functions de SQLite Cloud. Cada función se llama por su nombre:
 //   POST <url><nombre_funcion>   con el encabezado  Authorization: Bearer <apikey>
 // La URL y la API key salen de sqlitecloud.properties (ver app/build.gradle.kts).
+// [GUIA DOCENTE - API 2] Puerta HTTP hacia las Edge Functions de SQLite Cloud.
+// Nueva funcion remota: definirla en sqlitecloud/funciones/ y llamarla desde NubeRepository.
 interface FutHubNubeApi {
 
+    // [GUIA DOCENTE - POST] Envia JSON y un bearer token a la funcion indicada.
+    // IMPORTANTE: API keys incrustadas en APK NO son secretas; requerir permisos en backend.
     @POST("{funcion}")
     suspend fun llamar(
         @Path("funcion") funcion: String,

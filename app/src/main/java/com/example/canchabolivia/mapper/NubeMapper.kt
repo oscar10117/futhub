@@ -18,6 +18,8 @@ import com.example.canchabolivia.dto.TarjetaDto
 import com.example.canchabolivia.dto.TorneoDto
 
 // Todo lo que trae cargar_datos, ya convertido al modelo de la app.
+// [GUIA DOCENTE - MAPPER 2] Convierte JSON remoto a modelos de dominio.
+// Para otra tabla: agregar DTO, conversion aModelo y aCuerpo cuando se escriba.
 data class DatosNube(
     val equipos: List<Equipo>,
     val jugadores: List<Jugador>,

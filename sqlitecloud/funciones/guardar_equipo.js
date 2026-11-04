@@ -1,5 +1,7 @@
 // guardar_equipo: crea (o actualiza) un equipo junto con sus jugadores.
 // Recibe: { equipo: { id, nombre, sigla }, jugadores: [{ id, nombre, equipo_id, dorsal }] }
+// [GUIA DOCENTE - EDGE FUNCTION] Ejemplo de escritura remota.
+// Toda operacion nueva necesita validacion y permisos reales en servidor.
 const { equipo, jugadores = [] } = request.data;
 if (!equipo || !equipo.nombre) throw new Error('Falta el equipo');
 

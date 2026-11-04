@@ -6,6 +6,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
+// [GUIA DOCENTE - DAO ROOM] Aqui van consultas SQL locales (SELECT/INSERT/UPDATE).
+// Si el docente pide otra consulta local, agregar metodo @Query o @Insert aqui.
 @Dao
 interface ClimaDao {
 

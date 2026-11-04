@@ -3,6 +3,8 @@
 -- Los nombres de columna coinciden con los campos de dto/NubeDto.kt.
 -- Los usuarios NO van aquí: el inicio de sesión lo maneja Firebase Authentication.
 
+-- [GUIA DOCENTE - TABLAS NUBE] Definiciones SQL de los datos deportivos.
+-- Nueva tabla: crear nueva migracion SQL; no modificar a ciegas datos existentes.
 CREATE TABLE IF NOT EXISTS equipos (
     id      INTEGER PRIMARY KEY,
     nombre  TEXT NOT NULL,

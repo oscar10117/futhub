@@ -5,6 +5,8 @@ import com.example.canchabolivia.dto.ClimaResponseDto
 import com.example.canchabolivia.model.Clima
 
 // DTO (API) a Entity (Room). Devuelve null si la API no trajo los datos completos.
+// [GUIA DOCENTE - MAPPER 1] JSON DTO -> entidad local Room.
+// Se valida la respuesta antes de guardar para no introducir datos incompletos.
 fun ClimaResponseDto.aEntity(): ClimaEntity? {
     val c = actual ?: return null
     return ClimaEntity(

@@ -7,6 +7,9 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
+// [GUIA DOCENTE - BASE LOCAL ROOM] Registro de entidades, version y DAOs de Room.
+// Nueva tabla local: crear Entity y Dao, declararlos aqui, aumentar version y migrar.
+// La app conserva tablas Room historicas aunque el torneo ahora use SQLite Cloud.
 @Database(
     entities = [
         ClimaEntity::class,

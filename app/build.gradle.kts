@@ -9,6 +9,8 @@ plugins {
 }
 // Conexión a SQLite Cloud: se lee de sqlitecloud.properties (en la raíz del
 // proyecto, NO se sube a Git). Si no existe, la app usa los datos de ejemplo.
+// [GUIA DOCENTE - CONFIG DB] Lee la configuracion LOCAL para SQLite Cloud.
+// Nunca subir sqlitecloud.properties con credenciales.
 val sqliteCloud = Properties().apply {
     val archivo = rootProject.file("sqlitecloud.properties")
     if (archivo.exists()) archivo.inputStream().use { load(it) }
@@ -37,6 +39,8 @@ android {
         buildConfig = true
     }
 }
+// [GUIA DOCENTE - DEPENDENCIAS] Librerias de Retrofit/Gson (APIs), Room y Firebase.
+// Nueva API: anadir dependencia aqui solo si no esta disponible en el proyecto.
 dependencies {
     implementation("com.android.volley:volley:1.2.1")
     implementation("androidx.activity:activity-compose:1.10.1")
